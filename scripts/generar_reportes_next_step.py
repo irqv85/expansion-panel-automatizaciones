@@ -856,6 +856,29 @@ def build_general_html(attention_rows, generated_on):
 </body></html>"""
 
 
+def check_equipo_en_datos(data):
+    """Devuelve los vendedores de equipo.json sin una sola fila en los exports.
+
+    Dos causas distintas producen esto, y desde afuera se ven igual: o el nombre
+    de equipo.json no coincide con el de vTiger (un acento basta), o el reporte
+    de vTiger esta filtrado a otro equipo. En ambos casos el reporte se genera
+    sin errores y sin esa persona, que es lo peligroso."""
+    columnas = ("Deals Assigned To", "Organizations Assigned To",
+                "Farming Assigned To", "Assigned To")
+    vistos = set()
+    for filas in data.values():
+        if not filas:
+            continue
+        col = next((c for c in columnas if c in filas[0]), None)
+        if not col:
+            continue
+        for r in filas:
+            nombre = canonical_owner(r.get(col))
+            if nombre:
+                vistos.add(nombre)
+    return [o for o in TEAM_OWNERS if o not in vistos]
+
+
 def main():
     now = datetime.now()
     files = find_latest_files()
@@ -884,6 +907,18 @@ def main():
         print(f"  {cat}: {files[cat].name}")
 
     data = {cat: read_xlsx_rows(path) for cat, path in files.items()}
+
+    ausentes = check_equipo_en_datos(data)
+    if ausentes:
+        print("=" * 60)
+        print("ALERTA: estos vendedores de equipo.json no aparecen en NINGUN export:")
+        for nombre in ausentes:
+            print(f"  - {nombre}")
+        print("El reporte se va a generar igual, pero sin ellos. Puede ser que el")
+        print("nombre no coincida exacto con el campo 'Assigned To' de vTiger (un")
+        print("acento o un espacio de mas basta), o que el reporte de vTiger este")
+        print("filtrado a otro equipo. Revisa cual de las dos antes de usar esto.")
+        print("=" * 60)
 
     # El DIQ trae una fila por producto del deal; el reporte razona por deal.
     data["diq"], filas_colapsadas = dedupe_deals_por_id(data["diq"])
