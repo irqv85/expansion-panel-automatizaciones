@@ -157,6 +157,22 @@ grep -rl "<RAIZ_DEL_PROYECTO>" --include=*.md . | xargs sed -i "s|<RAIZ_DEL_PROY
 El `-Encoding utf8` no es opcional: Windows escribe en ANSI por defecto y te
 rompe los acentos de los prompts.
 
+Esa sustitución deja 11 archivos modificados respecto al repo, y eso chocaría con
+el lanzador que actualiza al abrir: `git merge --ff-only` se niega a avanzar si
+hay cambios locales. Para que no estorben, se marcan como locales:
+
+```bash
+git ls-files -m | xargs -I{} git update-index --skip-worktree "{}"
+```
+
+Así el repo conserva el marcador genérico, tu copia tiene la ruta real, y
+`git status` queda limpio para que el actualizador funcione. Para revertirlo,
+`--no-skip-worktree`. Verlos todos:
+
+```bash
+git ls-files -v | grep "^S"
+```
+
 ### 5. Abre el panel
 
 ```
