@@ -43,9 +43,11 @@ from paths import DOWNLOADS, METRICAS_DIR as OUTPUT_DIR
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-EQUIPO = ["Vendedor 2", "Vendedora 1", "Vendedora 3", "Vendedor 4"]
+# Quinta copia del equipo que habia escrita a mano en el proyecto. Con la lista
+# equivocada el reporte no falla: sale vacio, que es peor (5-oct-2026).
+from equipo import NOMBRE_PANEL, TEAM_OWNERS as EQUIPO
 
-# ---- OKR 2026 Growth Mid + Digital FW (<500 empleados) - el responsable comercial Quintero ----
+# ---- OKR 2026: metas del equipo, ver equipo.json ----
 # Metas tal como estan en la hoja de OKR del equipo.
 TARGET_SALES_ARR = 2_070_000   # KR1 Total FW Mid + Digital ARR (NB + Expansion)
 TARGET_PF_ARR = 300_000        # KR2 Reseller Conversion: Payment Frequency
@@ -284,7 +286,10 @@ def hoja_resumen(wb, ctx):
     celda(ws, 1, 1, f"Mid/SMB - Reporte ejecutivo {m}", bold=True, size=16,
           color=C_DARK, borde=False)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncols)
-    celda(ws, 2, 1, f"el responsable comercial Quintero - equipo de {len(EQUIPO)} vendedores | "
+    # El nombre sale de equipo.json: escrito a mano quedaba mintiendo en cuanto
+    # el panel lo usaba otro equipo (5-oct-2026).
+    _eq = NOMBRE_PANEL or "Equipo comercial"
+    celda(ws, 2, 1, f"{_eq} - equipo de {len(EQUIPO)} vendedores | "
                     f"Generado {datetime.now():%d/%m/%Y %H:%M} | Fuente: {ctx['reporte'].name}",
           size=9, color="5B5F6B", borde=False)
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=ncols)

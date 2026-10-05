@@ -92,12 +92,20 @@ if not VTIGER_USER or not VTIGER_ACCESS_KEY:
 # y leyendo su assigned_user_id. Son identificadores internos permanentes de
 # esas cuentas de usuario en vTiger -- no deberian cambiar salvo que se borre
 # y recree el usuario.
-TEAM = {
-    "Vendedor 2": "19x222",
-    "Vendedor 4": "19x260",
-    "Vendedora 3": "19x425",
-    "Vendedora 1": "19x431",
-}
+# nombre -> id de usuario de vTiger, desde equipo.json (campo vtiger_id de
+# cada vendedor). Estaban escritos a mano con los ids del equipo de Freshworks:
+# usarlos con otro equipo bajaba los reportes de gente ajena sin avisar
+# (5-oct-2026).
+from equipo import VTIGER_IDS as TEAM
+
+if not TEAM:
+    sys.exit(
+        "ERROR: ningun vendedor de equipo.json tiene 'vtiger_id'.\n"
+        "       Este script consulta la API por id de usuario, no por nombre.\n"
+        "       Sacalos de vTiger: abri una Organizacion de cada vendedor y mira\n"
+        "       su assigned_user_id (tiene la forma 19x<numero>)."
+    )
+
 TEAM_IDS = list(TEAM.values())
 ID_TO_NAME = {v: k for k, v in TEAM.items()}
 

@@ -276,6 +276,11 @@ def check_sofia_status():
     try:
         state = sofia.load_state()
         processed = set(state.get("processed_files", []))
+        # Una carpeta de salida que todavia no se creo no es un error: es el
+        # estado normal de una instalacion nueva. Antes el semaforo mostraba un
+        # WinError 3 con la ruta cruda, que parecia una rotura (5-oct-2026).
+        if not sofia.WATCH_FOLDER.exists():
+            return COLOR_GRAY, "Sin presentaciones generadas todavía."
         current_files = [p for p in sofia.WATCH_FOLDER.iterdir() if p.is_file()]
         pending = [p for p in current_files if p.name not in processed]
     except Exception as exc:
@@ -1496,7 +1501,10 @@ class Hero(tk.Frame):
                                 width=1, height=1)
         self.canvas.pack(fill="both", expand=True)
 
-        self._contexto = "Mid/SMB · el responsable comercial Quintero · GB Advisors"
+        # El equipo manda: antes estaba escrito a mano y quedaba mintiendo en
+        # cuanto el panel se usaba para otro equipo (5-oct-2026).
+        _eq = gen_ns.NOMBRE_PANEL
+        self._contexto = f"{_eq} · GB Advisors" if _eq else "GB Advisors"
         self._img = None
         self._fondo_src = None
         fondo = BRAND_DIR / "gradient-dark.png"
@@ -2317,11 +2325,15 @@ class Panel:
         # lanzador -- mismo patron que Sofia - AI / vTiger Analisis. La
         # ventana en si vive en FreshworksWindow; aca solo se crea y se
         # guardan referencias a sus tarjetas.
+        # La ventana se construye SIEMPRE aunque la tarjeta no se muestre: mas
+        # abajo se toman referencias a sus tarjetas (forecast_card,
+        # cadence_card) y sin ella habria que desmontar medio archivo.
         self.freshworks_window = FreshworksWindow(self)
-        self.freshworks_card = StatusCard(cuerpo, "Freshworks")
-        celda_grid(self.freshworks_card, 1, 1)
-        PillButton(self.freshworks_card.button_row, "Abrir",
-                  self.freshworks_window.abrir, "primary").pack(side="left")
+        if gen_ns.MOSTRAR_FRESHWORKS:
+            self.freshworks_card = StatusCard(cuerpo, "Freshworks")
+            celda_grid(self.freshworks_card, 1, 1)
+            PillButton(self.freshworks_card.button_row, "Abrir",
+                       self.freshworks_window.abrir, "primary").pack(side="left")
 
         # --- Presentacion de cliente a demanda (23-sep-2026) ---
         # Aparte de la rutina de Sofia a proposito: aquella busca reuniones en
@@ -2754,11 +2766,14 @@ class Panel:
             f"Calidad CRM: {texto_ns} · Métricas: {texto_met} · Churn: {texto_churn} · "
             f"GBS: {texto_gbs} · GBS Deal Maker: {texto_gbsmk} · GBS Org Maker: {texto_gbsom}")
 
-        color_forecast, texto_forecast = resultados[self.forecast_card]
-        color_cadence, texto_cadence = resultados[self.cadence_card]
-        self.freshworks_card.set_status(
-            peor_color(color_forecast, color_cadence),
-            f"Forecast: {texto_forecast} · Cadence Generator: {texto_cadence}")
+        # La tarjeta puede no existir: con mostrar_freshworks en false la ventana
+        # se construye igual (hay referencias a sus tarjetas) pero no se muestra.
+        if getattr(self, "freshworks_card", None) is not None:
+            color_forecast, texto_forecast = resultados[self.forecast_card]
+            color_cadence, texto_cadence = resultados[self.cadence_card]
+            self.freshworks_card.set_status(
+                peor_color(color_forecast, color_cadence),
+                f"Forecast: {texto_forecast} · Cadence Generator: {texto_cadence}")
 
         self.hero.set_sello(f"Actualizado {datetime.now():%H:%M}")
 
@@ -3129,8 +3144,8 @@ class Panel:
             f"la sección \"=== SECCIÓN DESPLEGAR (SÍ escribe: SharePoint + vTiger) ===\" -- NO "
             "ejecutes la sección GENERAR en esta corrida. Usa como entrada los .docx que estén "
             f"hoy en {GBS_MAKER_BORRADORES_DIR} cruzados con su manifiesto. Este despliegue fue "
-            "aprobado por el responsable comercial Quintero al hacer clic en 'Desplegar' en el Panel de "
-            "Automatizaciones -- los borradores que el responsable comercial no quería ya los borró de la carpeta "
+            "aprobado por quien opera el panel al hacer clic en 'Desplegar' en el Panel de "
+            "Automatizaciones -- los borradores que no se querían ya los borró de la carpeta "
             "antes de este clic, así que subí TODO lo que encuentres ahí sin pedir más "
             "confirmación."
         )
@@ -3211,8 +3226,8 @@ class Panel:
             "NO ejecutes la sección GENERAR en esta corrida. Usa como entrada los .docx que "
             f"estén hoy en {GBS_ORG_MAKER_BORRADORES_DIR} cruzados con su manifiesto, y usa el "
             "tool Workflow para procesarlos en paralelo tal como indica el skill. Este "
-            "despliegue fue aprobado por el responsable comercial Quintero al hacer clic en 'Desplegar' en el Panel "
-            "de Automatizaciones -- los borradores que el responsable comercial no quería ya los borró de la "
+            "despliegue fue aprobado por quien opera el panel al hacer clic en 'Desplegar' en el Panel "
+            "de Automatizaciones -- los borradores que no se querían ya los borró de la "
             "carpeta antes de este clic, así que subí TODO lo que encuentres ahí sin pedir más "
             "confirmación."
         )

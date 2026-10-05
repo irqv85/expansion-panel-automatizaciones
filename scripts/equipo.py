@@ -88,3 +88,23 @@ PATRON_REPORTES = (_datos.get("patron_reportes") or "").strip()
 #: la misma PC es lo que evita correr el reporte del equipo equivocado, que no
 #: falla ni avisa: simplemente saca numeros de otra gente.
 NOMBRE_PANEL = (_datos.get("nombre_panel") or "").strip()
+
+#: Mostrar la tarjeta "Freshworks" (Forecast y Cadence Generator). Se apaga en
+#: los equipos que no trabajan con Freshworks. Por defecto encendida, para no
+#: cambiarle el panel a quien ya lo tenia.
+MOSTRAR_FRESHWORKS = bool(_datos.get("mostrar_freshworks", True))
+
+#: nombre -> id de usuario en vTiger (19x<numero>), solo de quienes lo tengan
+#: configurado. Lo usa descargar_reportes_vtiger.py, que consulta la API por id
+#: y no por nombre. Se saca abriendo una Organizacion del vendedor en vTiger y
+#: mirando su assigned_user_id.
+VTIGER_IDS = {
+    v["nombre"]: v["vtiger_id"] for v in _datos["vendedores"] if v.get("vtiger_id")
+}
+
+#: Vendedores con su correo, en el orden en que se reparte el turno rotativo de
+#: presentaciones. Lo consume Sofia - Schedule.py y la ventana de Vacaciones.
+SELLERS = [
+    {"name": v["nombre"], "email": v["correo"]}
+    for v in _datos["vendedores"] if v.get("correo")
+]

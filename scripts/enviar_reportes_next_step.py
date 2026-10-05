@@ -32,13 +32,10 @@ STATE_FILE = SCRIPT_DIR / "state_envio_next_step.json"
 LOG_FILE = SCRIPT_DIR / "envio_next_step.log"
 MANIFEST_FILE = SCRIPT_DIR / "ultima_generacion_next_step.json"
 
-SELLERS = [
-    {"name": "Vendedora 3", "email": "vendedora1@tuempresa.com"},
-    {"name": "Vendedor 2", "email": "vendedor2@tuempresa.com"},
-    {"name": "Vendedora 1", "email": "vendedora3@tuempresa.com"},
-    {"name": "Vendedor 4", "email": "vendedor4@tuempresa.com"},
-]
-CC_EMAIL = "copia@tuempresa.com"
+# Esta lista decide A QUIEN se le manda su reporte de Calidad CRM. Estaba
+# escrita a mano, asi que con otro equipo los correos se iban a direcciones
+# inexistentes (5-oct-2026).
+from equipo import CC_EMAIL, SELLERS  # noqa: F401
 
 VENDOR_FILE_RE = re.compile(r"^Next Step - (.+)_(\d{2}-\d{2}-\d{4})\.html$")
 GENERAL_FILE_RE = re.compile(r"^Account Book Attention - General_(\d{2}-\d{2}-\d{4})\.html$")

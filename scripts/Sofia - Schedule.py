@@ -73,13 +73,10 @@ STATE_FILE = SCRIPT_DIR / "state.json"
 LOG_FILE = SCRIPT_DIR / "envio_vendedores.log"
 VACATION_FILE = SCRIPT_DIR / "vacaciones.json"
 
-SELLERS = [
-    {"name": "Vendedora 3", "email": "vendedora1@tuempresa.com"},
-    {"name": "Vendedor 2", "email": "vendedor2@tuempresa.com"},
-    {"name": "Vendedora 1", "email": "vendedora3@tuempresa.com"},
-    {"name": "Vendedor 4", "email": "vendedor4@tuempresa.com"},
-]
-CC_EMAIL = "copia@tuempresa.com"
+# Cuarta copia del equipo que habia en el proyecto. Es la que alimenta la
+# ventana de Vacaciones, asi que mientras estuvo escrita a mano ahi salian
+# nombres que no eran los del equipo (5-oct-2026).
+from equipo import CC_EMAIL, SELLERS  # noqa: F401
 SOFIA_MARKER = "sofia"  # texto que debe aparecer en el organizador de la reunion
 
 BUSINESS_DAYS = {0, 1, 2, 3, 4}  # lunes=0 ... viernes=4

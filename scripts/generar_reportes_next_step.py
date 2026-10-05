@@ -28,7 +28,8 @@ from paths import DOWNLOADS, GB_CLAUDE
 # El equipo sale de equipo.json, no del codigo. El resto de los scripts
 # importa TEAM_OWNERS desde aqui, asi que este sigue siendo el punto unico.
 from equipo import (  # noqa: F401
-    NOMBRE_PANEL, OWNER_ALIASES, PATRON_REPORTES, TEAM_OWNERS,
+    MOSTRAR_FRESHWORKS, NOMBRE_PANEL, OWNER_ALIASES, PATRON_REPORTES,
+    TEAM_OWNERS,
 )
 
 UMBRAL_SIN_ATENCION_DIAS = 7

@@ -1,26 +1,27 @@
 {
   "_comentario": "Copia este archivo a equipo.json y pon tu equipo. 'nombre' tiene que coincidir EXACTO con el campo 'Assigned To' de vTiger: es la llave con la que se cruzan todos los reportes.",
-
   "vendedores": [
     {
       "nombre": "Nombre Apellido",
       "correo": "nombre.apellido@tuempresa.com",
       "alias": [],
-      "hoja": "Nombre Apellido"
+      "hoja": "Nombre Apellido",
+      "vtiger_id": ""
     },
     {
       "nombre": "Otro Vendedor",
       "correo": "otro.vendedor@tuempresa.com",
-      "alias": ["Nombre Anterior"],
-      "hoja": "Otro Vendedor"
+      "alias": [
+        "Nombre Anterior"
+      ],
+      "hoja": "Otro Vendedor",
+      "vtiger_id": ""
     }
   ],
-
   "cc_presentaciones": "copia@tuempresa.com",
-
   "_patron_reportes": "Solo si hay mas de un equipo bajando reportes a la misma carpeta de Descargas: texto que debe contener el nombre del export para que este panel lo considere. Dejalo vacio si eres el unico.",
   "patron_reportes": "",
-
   "_nombre_panel": "Aparece en la barra de titulo. Util si tienes mas de un panel instalado.",
-  "nombre_panel": ""
+  "nombre_panel": "",
+  "_vtiger_id": "Solo si usas descargar_reportes_vtiger.py, que consulta la API por id de usuario y no por nombre. Se saca abriendo una Organizacion del vendedor en vTiger y mirando su assigned_user_id (forma 19x<numero>)."
 }
