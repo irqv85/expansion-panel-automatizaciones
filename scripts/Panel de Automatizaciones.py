@@ -973,6 +973,48 @@ def activar_dpi():
             pass
 
 
+def icono_de_ventana(root, ruta_ico):
+    """Cuelga el .ico de la ventana en la medida exacta que pide Windows.
+
+    Hace falta ademas de iconbitmap(): aquel solo deja el icono de CLASE, y la
+    barra de tareas pide el de VENTANA. Medido el 5-oct-2026, WM_GETICON
+    devolvia 0 en las tres variantes, asi que Windows estiraba lo que encontraba
+    y el icono salia borroso.
+
+    Las medidas se le preguntan al sistema en vez de fijar 32: con la pantalla
+    al 125% o 150% la barra pide 40 o 48 px, y un valor fijo reproduciria el
+    mismo defecto un escalon mas arriba.
+    """
+    if os.name != "nt" or not ruta_ico.exists():
+        return False
+    try:
+        import ctypes
+
+        u = ctypes.windll.user32
+        IMAGE_ICON, LR_LOADFROMFILE = 1, 0x0010
+        WM_SETICON, ICON_SMALL, ICON_BIG = 0x0080, 0, 1
+        SM_CXICON, SM_CYICON, SM_CXSMICON, SM_CYSMICON = 11, 12, 49, 50
+
+        hwnd = int(root.wm_frame(), 16)
+        medidas = (
+            (ICON_BIG, u.GetSystemMetrics(SM_CXICON), u.GetSystemMetrics(SM_CYICON)),
+            (ICON_SMALL, u.GetSystemMetrics(SM_CXSMICON), u.GetSystemMetrics(SM_CYSMICON)),
+        )
+        # Los handles se guardan en el root: si Python los recolecta, Windows
+        # destruye el icono y la ventana se queda sin el.
+        root._iconos_win32 = []
+        for cual, ancho, alto in medidas:
+            h = u.LoadImageW(None, str(ruta_ico), IMAGE_ICON, ancho, alto,
+                             LR_LOADFROMFILE)
+            if not h:
+                continue
+            root._iconos_win32.append(h)
+            u.SendMessageW(hwnd, WM_SETICON, cual, h)
+        return bool(root._iconos_win32)
+    except Exception:
+        return False
+
+
 def identidad_barra_tareas():
     """Declara un AppUserModelID propio antes de crear la ventana. Sin esto
     Windows agrupa la ventana bajo pythonw.exe y la barra de tareas muestra
@@ -2148,6 +2190,14 @@ class Panel:
                 root.iconphoto(True, self._icon_img)
             except Exception:
                 pass
+
+        # Ademas del icono de clase que deja iconbitmap, se le cuelga a la
+        # VENTANA el suyo en la medida exacta: es el que mira la barra de
+        # tareas. update_idletasks primero, porque wm_frame necesita que la
+        # ventana ya exista de verdad.
+        if icono_ico.exists():
+            root.update_idletasks()
+            icono_de_ventana(root, icono_ico)
 
         self._setup_style()
 
