@@ -47,3 +47,6 @@ desktop.ini
 # publica en Releases y no en el repo: un binario grande infla el historial para
 # siempre. Se copian a mano desde el proyecto original.
 *.skill
+
+# Logs que escriben los scripts al correr.
+*.log
