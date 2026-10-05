@@ -1,0 +1,26 @@
+{
+  "_comentario": "Copia este archivo a equipo.json y pon tu equipo. 'nombre' tiene que coincidir EXACTO con el campo 'Assigned To' de vTiger: es la llave con la que se cruzan todos los reportes.",
+
+  "vendedores": [
+    {
+      "nombre": "Nombre Apellido",
+      "correo": "nombre.apellido@tuempresa.com",
+      "alias": [],
+      "hoja": "Nombre Apellido"
+    },
+    {
+      "nombre": "Otro Vendedor",
+      "correo": "otro.vendedor@tuempresa.com",
+      "alias": ["Nombre Anterior"],
+      "hoja": "Otro Vendedor"
+    }
+  ],
+
+  "cc_presentaciones": "copia@tuempresa.com",
+
+  "_patron_reportes": "Solo si hay mas de un equipo bajando reportes a la misma carpeta de Descargas: texto que debe contener el nombre del export para que este panel lo considere. Dejalo vacio si eres el unico.",
+  "patron_reportes": "",
+
+  "_nombre_panel": "Aparece en la barra de titulo. Util si tienes mas de un panel instalado.",
+  "nombre_panel": ""
+}

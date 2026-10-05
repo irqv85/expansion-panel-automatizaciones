@@ -1,0 +1,43 @@
+# Credenciales y configuracion propia de cada quien. Nunca se suben.
+.env
+equipo.json
+Rutinas/.vtiger-credentials
+
+# Estado y planes que generan los scripts en cada corrida. Llevan nombres de
+# organizaciones y de vendedores reales, asi que no van al repo.
+scripts/plan_*.json
+scripts/state*.json
+scripts/ultima_generacion_*.json
+scripts/vacaciones.json
+scripts/resumen_next_step_preview.html
+
+# Salidas por dominio: se regeneran desde vTiger, no se versionan.
+Forecast/
+Metricas Ejecutivas/
+Emails Vendedores/
+Churn Accounts/informes/
+GBS Deal Maker/borradores/
+GBS Organization Maker/borradores/
+Reportes Claude - Presentation/
+
+# Corridas del lote de churn: cuentas y veredictos reales.
+Claude/Scheduled/analiza-churn-batch/churn_aplicable.json
+Claude/Scheduled/analiza-churn-batch/cuentas_*.json
+Claude/Scheduled/analiza-churn-batch/informes_extraidos.json
+Claude/Scheduled/analiza-churn-batch/resumenes_cuentas.json
+Claude/Scheduled/analiza-churn-batch/despliegue_*.json
+
+# Logs de las rutinas y marcadores de corrida diaria.
+Rutinas/logs/
+.last-success-*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Oficina y temporales de Windows
+~$*
+*.tmp
+Thumbs.db
+desktop.ini
