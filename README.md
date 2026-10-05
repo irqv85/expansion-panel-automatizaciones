@@ -173,7 +173,25 @@ Así el repo conserva el marcador genérico, tu copia tiene la ruta real, y
 git ls-files -v | grep "^S"
 ```
 
-### 5. Abre el panel
+### 5. Copia los paquetes de marca
+
+Los informes de churn y los decks de cliente generan HTML con la identidad de GB
+Advisors, y esa identidad viene en unos `.skill`, que son ZIP. No están en el
+repositorio porque `gb-advisors-design.skill` pesa 12 MB y un binario grande infla
+el historial de git para siempre, igual que el `.exe` de GB Print Claude, que se
+publica en Releases.
+
+Cópialos a la raíz del proyecto desde la instalación original:
+
+```
+gb-advisors-design.skill
+gb-deck-cliente.skill
+gb-fw-cx-cadence-deck.skill
+```
+
+Sin ellos el análisis de churn corre igual, pero el HTML sale sin marca.
+
+### 6. Abre el panel
 
 ```
 scripts\Panel de Automatizaciones.bat

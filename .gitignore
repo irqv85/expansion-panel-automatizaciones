@@ -41,3 +41,9 @@ __pycache__/
 *.tmp
 Thumbs.db
 desktop.ini
+
+# Paquetes de marca (.skill). Son ZIP binarios: gb-advisors-design.skill solo
+# pesa 12 MB y cambia poco. Misma razon por la que el .exe de GB Print Claude se
+# publica en Releases y no en el repo: un binario grande infla el historial para
+# siempre. Se copian a mano desde el proyecto original.
+*.skill

@@ -1,0 +1,181 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Freshworks CX Pipeline — Cadence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<style>
+:root{--magenta:#EA018B;--bright:#FF31BD;--purple:#504BE0;--ink:#12112C;--bg:#F8F9FA;--elev:#F1F3F5;--border:#DEE2E6;--muted:#495057;--subtle:#868E96;--green:#22c55e;--yellow:#eab308;--red:#ef4444;--font:"Inter",system-ui,sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%}
+body{font-family:var(--font);background:#0a0920;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased}
+.mi{font-family:'Material Symbols Rounded';line-height:1;vertical-align:middle}
+#bar{position:fixed;top:0;left:0;right:0;height:50px;z-index:50;background:#12112C;display:flex;align-items:center;gap:12px;padding:0 16px;color:#fff;font-size:13px}
+#bar .sep{width:1px;height:22px;background:rgba(255,255,255,.15)}
+#bar button{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+#bar button:hover{background:rgba(255,255,255,.16)}#bar .spacer{flex:1}
+.toggle{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#cfd0e0}.toggle input{display:none}
+.tk{width:32px;height:18px;border-radius:999px;background:rgba(255,255,255,.2);position:relative;transition:.2s}
+.tk::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+.toggle input:checked+.tk{background:var(--magenta)}.toggle input:checked+.tk::after{transform:translateX(14px)}
+.drop{position:relative}.menu{position:absolute;top:36px;left:0;background:#1b1a3d;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px;min-width:210px;max-height:62vh;overflow:auto;display:none;z-index:80;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.menu.open{display:block}.menu label,.menu a{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:12.5px;color:#e7e8f4;cursor:pointer;text-decoration:none}
+.menu label:hover,.menu a:hover{background:rgba(255,255,255,.08)}.menu .act{display:flex;gap:6px;padding:4px 4px 8px}.menu .act button{flex:1;font-size:11px;padding:5px}
+#deck{position:absolute;top:50px;left:0;right:0;bottom:0;background:var(--bg)}
+.slide{position:absolute;inset:0;padding:40px 56px 46px;display:none;flex-direction:column;overflow:hidden}.slide.active{display:flex}
+.slide.cover{background:conic-gradient(from 0deg at 50% 50%,#FF31BD 0%,#12112C 60%,#12112C 100%);color:#fff;justify-content:center;padding:0 90px}
+.cover svg{height:50px;margin-bottom:34px}.cover h1{font-size:68px;font-weight:600;letter-spacing:-.03em;line-height:1.02}
+.cover .sub{font-size:21px;color:#ffd7f1;margin-top:18px;font-weight:500}.cover .meta{margin-top:28px;font-size:14px;color:#e7c9e6;display:flex;gap:22px;flex-wrap:wrap}
+.eyebrow{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--subtle);font-weight:600}
+h1.title{font-size:30px;font-weight:600;letter-spacing:-.02em;margin-top:3px}.pill{height:9px;width:56px;border-radius:999px;background:var(--magenta);margin:9px 0 14px}
+.bigsec{position:absolute;top:26px;right:56px;font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--magenta)}
+.foot{position:absolute;bottom:15px;left:56px;right:56px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--subtle)}
+.foot .fl svg{height:15px;opacity:.55}.pg{font-variant-numeric:tabular-nums}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;flex:0 0 auto}.krow.k3{grid-template-columns:repeat(3,1fr)}
+.kpi{background:var(--elev);border-radius:18px;padding:16px 18px}.kpi .k{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font-size:34px;font-weight:600;letter-spacing:-.02em;margin-top:3px;font-variant-numeric:tabular-nums}.kpi .v.accent{color:var(--magenta)}.kpi .v.accent2{color:var(--purple)}
+.kpi .d{font-size:12px;color:var(--subtle);margin-top:2px}.kpi-won{background:#eafaf0}.kpi-won .v{color:#15803d}
+.wonstrip{margin-top:13px;background:#eafaf0;border:1px solid #b7ebc9;border-radius:13px;padding:9px 15px;font-size:13px;color:#15803d;flex:0 0 auto}.wonstrip b{color:#0f5132}
+.body2b{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;flex:1;min-height:0;margin-top:14px}
+.panel{background:var(--elev);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.ph{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}.mut{font-weight:400;text-transform:none;color:var(--subtle)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl th,.tbl td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--subtle);font-weight:600;position:sticky;top:0;background:var(--elev)}
+.tbl td.n,.tbl th.n{text-align:right;font-variant-numeric:tabular-nums}.tr-tot td{font-weight:600;border-top:2px solid var(--border);border-bottom:none}.mono{font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap}
+.b-neg{background:#fde7f4;color:#b00467}.b-quo{background:#eef0fe;color:#37349f}.b-demo{background:#fff4e5;color:#b45309}.b-why{background:#e9fbf1;color:#15803d}.b-acc{background:#e9fbf1;color:#15803d}.b-qual{background:#eef0f2;color:#495057}.b-won{background:#dcfce7;color:#166534}
+.hl{background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;line-height:1.45;border-left:4px solid var(--magenta)}.hl:focus{outline:2px solid var(--magenta);outline-offset:2px}
+.repbar{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--muted);margin:-4px 0 12px;flex-wrap:wrap}.repbar b{color:var(--ink)}.repbar .dot{color:var(--border)}
+.tbl-scroll{overflow:auto;flex:1;min-height:0;border-radius:10px}.deals{font-size:12px}
+.deals th:nth-child(1){width:16%}.deals th:nth-child(2){width:14%}.deals th:nth-child(3){width:11%}.deals th:nth-child(4){width:13%}.deals th:nth-child(5){width:17%}.deals th:nth-child(6){width:15%}.deals th:nth-child(7){width:14%}.deals td.dn{font-weight:500;line-height:1.3}
+.deals td.stat{color:var(--muted);line-height:1.32}.deals td.ns{line-height:1.32}
+.sub2{font-size:10.5px;color:var(--subtle);font-weight:400}.sar{font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px}
+.edit{background:#fff}.edit:focus{outline:2px solid var(--magenta)}.pos{color:var(--red);font-weight:600}
+.rd{width:9px;height:9px;border-radius:50%;display:inline-block}
+.chips{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}.chip{font-size:9.5px;background:#fff;border:1px solid var(--border);border-radius:999px;padding:2px 7px;color:var(--muted);white-space:nowrap}
+.chip-p{border-color:#c9d4fc;color:#37349f;background:#eff2fe}.chip-a{border-color:#ffc9f3;color:#b00467;background:#ffebf7}
+.qlist{display:flex;flex-direction:column;gap:3px}.q{display:inline-block;font-size:10px;font-weight:600;border-radius:999px;padding:2px 8px;line-height:1.35}
+.q-act{background:#e9fbf1;color:#15803d}.q-exp{background:#fdecec;color:#b91c1c}.q-prog{background:#fff4e5;color:#b45309}.q-no{background:#eef0f2;color:#868E96}
+.extag{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;letter-spacing:.05em;background:#fff4e5;color:#b45309;border-radius:4px;padding:1px 5px}.exrow{background:#fffdf6}
+#dots{position:fixed;bottom:11px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:6px}#dots span{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.18);cursor:pointer}#dots span.on{background:var(--magenta);width:20px;border-radius:999px}
+#nav{position:fixed;bottom:9px;right:16px;z-index:60;display:flex;gap:8px}#nav button{width:36px;height:36px;border-radius:50%;border:none;background:var(--ink);color:#fff;cursor:pointer;font-size:19px}#nav button:hover{background:var(--magenta)}
+.ctag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.03em;border-radius:4px;padding:1px 5px;color:#fff}.ct-cx{background:#EA018B}.ct-ex{background:#504BE0}.ct-d42{background:#0d9488}.ct-ai{background:#d97706}.ct-ot{background:#868E96}.fwbook{margin-top:11px;font-size:12.5px;color:var(--muted);background:var(--elev);border-radius:12px;padding:9px 14px;flex:0 0 auto}.mut2{color:#9a9bbf;font-weight:400}#toast{position:fixed;bottom:58px;left:50%;transform:translateX(-50%);background:#12112C;color:#fff;padding:8px 16px;border-radius:999px;font-size:12px;opacity:0;transition:opacity .2s;z-index:90;pointer-events:none}#toast.on{opacity:.95}.ct-pf{background:#0f766e}.ib{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}.iblab{font-size:9px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.04em;margin-right:2px}.ibit{font-size:9.5px;background:#eafaf0;border:1px solid #b7ebc9;color:#15803d;border-radius:6px;padding:1px 6px;white-space:nowrap}.ibit.off{background:#f1f3f5;border-color:#dee2e6;color:#868E96}@media print{body{overflow:visible;background:#fff}#bar,#dots,#nav{display:none!important}#deck{position:static;top:0}.slide{display:flex!important;position:relative;inset:auto;width:100%;height:100vh;page-break-after:always;break-after:page;overflow:hidden}.tbl-scroll{overflow:visible}.exrow{display:none!important}@page{size:landscape;margin:0}}
+</style></head><body>
+<div id="bar"><span style="font-weight:600;display:flex;align-items:center;gap:8px"><span class="mi" style="font-size:18px">groups</span> FW CX · by rep</span>
+<span class="sep"></span>
+<div class="drop"><button onclick="tm('Rep')"><span class="mi" style="font-size:16px">person</span> Go to rep</button><div class="menu" id="menuRep"></div></div>
+<div class="drop"><button onclick="tm('Country')"><span class="mi" style="font-size:16px">public</span> Countries <span id="cCountry">(all)</span></button><div class="menu" id="menuCountry"></div></div><div class="drop"><button onclick="tm('Stage')"><span class="mi" style="font-size:16px">flag</span> Stage <span id="cStage">(all)</span></button><div class="menu" id="menuStage"></div></div><div class="drop"><button onclick="tm('Ecd')"><span class="mi" style="font-size:16px">event</span> Close date <span id="cEcd">(all)</span></button><div class="menu" id="menuEcd"></div></div>
+<div class="drop"><button onclick="tm('Cat')"><span class="mi" style="font-size:16px">category</span> Categories</button><div class="menu" id="menuCat"><label><input type="checkbox" value="CX" checked onchange="applyF()"> CX <span class="mut2">(FD/chat/sales/caller)</span></label><label><input type="checkbox" value="EX" onchange="applyF()"> EX <span class="mut2">(Freshservice)</span></label><label><input type="checkbox" value="D42" onchange="applyF()"> Device 42</label><label><input type="checkbox" value="AI" onchange="applyF()"> Freddy · AI · bots</label><label><input type="checkbox" value="PF" onchange="applyF()"> Payment frequency</label><label><input type="checkbox" value="Other" onchange="applyF()"> Add-ons / other</label></div></div>
+<span class="spacer"></span>
+<button onclick="guardarNotas()" title="Descarga notas-cadencia.json; ponlo en FW-Cadence-Generator para que el proximo deck salga con estas notas"><span class="mi" style="font-size:16px">save</span> Guardar notas</button>
+<button onclick="tf()"><span class="mi" style="font-size:16px">fullscreen</span> Present</button>
+<button onclick="window.print()"><span class="mi" style="font-size:16px">print</span> PDF</button><button onclick="saveCopy()"><span class="mi" style="font-size:16px">save</span> Save copy</button></div>
+<div id="deck">%%SLIDES%%</div><div id="dots"></div>
+<div id="toast"></div><div id="nav"><button onclick="go(-1)">&#8249;</button><button onclick="go(1)">&#8250;</button></div>
+<script>
+const DECK=%%DECKDATA%%;const COUNTRIES=%%COUNTRIES%%;const money=n=>"$"+Math.round(n).toLocaleString("en-US");const csel=new Set(COUNTRIES);
+const slides=[...document.querySelectorAll(".slide")];let cur=0;const dots=document.getElementById("dots");
+slides.forEach((s,i)=>{const d=document.createElement("span");d.onclick=()=>show(i);dots.appendChild(d);});
+function show(i){cur=Math.max(0,Math.min(slides.length-1,i));slides.forEach((s,j)=>s.classList.toggle("active",j===cur));[...dots.children].forEach((d,j)=>d.classList.toggle("on",j===cur));if(slides[cur]&&slides[cur].classList.contains("summaryslide"))renderSummary();}
+function go(d){show(cur+d);}function tf(){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+document.addEventListener("keydown",e=>{if(e.target&&e.target.isContentEditable)return;if(e.key==="ArrowRight"||e.key==="PageDown")go(1);else if(e.key==="ArrowLeft"||e.key==="PageUp")go(-1);else if(e.key==="f"||e.key==="F")tf();});
+function tm(k){document.querySelectorAll(".menu").forEach(m=>{if(m.id!=="menu"+k)m.classList.remove("open")});document.getElementById("menu"+k).classList.toggle("open");}
+document.addEventListener("click",e=>{if(!e.target.closest(".drop"))document.querySelectorAll(".menu").forEach(m=>m.classList.remove("open"));});
+(function(){const m=document.getElementById("menuRep");let h="";slides.forEach((s,i)=>{if(s.classList.contains("repslide")){const rep=s.dataset.rep,seg=s.dataset.seg==="New Business"?"NB":"Exp";h+='<a onclick="show('+i+')"><span class="mi" style="font-size:15px;color:#EA018B">arrow_forward</span> '+rep+' <span style="color:#8a8bb0">· '+seg+'</span></a>';}});m.innerHTML=h;})();
+(function(){const m=document.getElementById("menuCountry");let h='<div class="act"><button onclick="allC(1)">All</button><button onclick="allC(0)">None</button></div>';COUNTRIES.forEach(v=>{h+='<label><input type="checkbox" checked onchange="togC(\''+v.replace(/'/g,"\\'")+'\',this.checked)"> '+v+'</label>';});m.innerHTML=h;})();
+
+const STAGE_ORDER=["Qualification","Demo or POC","Why Analysis","Quote or Proposal","Accepted Proposal","Negotiation","PO Invoiced"];
+const STAGES=STAGE_ORDER.filter(x=>DECK.DEALS.some(d=>d.s===x)).concat([...new Set(DECK.DEALS.map(d=>d.s))].filter(x=>!STAGE_ORDER.includes(x)));
+const sset=new Set(STAGES);
+const EMS=[...new Set(DECK.DEALS.map(d=>d.em))].sort();
+const eset=new Set(EMS);
+const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function emLabel(em){if(!em)return "No date";const p=em.split("-");return MO[(+p[1])-1]+" '"+p[0].slice(2);}
+(function(){const m=document.getElementById("menuStage");let h='<div class="act"><button onclick="allS(1)">All</button><button onclick="allS(0)">None</button></div>';STAGES.forEach(v=>{h+='<label><input type="checkbox" checked onchange="togS(\''+v.replace(/'/g,"\\'")+'\',this.checked)"> '+v+'</label>';});m.innerHTML=h;})();
+(function(){const m=document.getElementById("menuEcd");let h='<div class="act"><button onclick="allE(1)">All</button><button onclick="allE(0)">None</button></div>';EMS.forEach(v=>{h+='<label><input type="checkbox" checked onchange="togE(\''+v+'\',this.checked)"> '+emLabel(v)+'</label>';});m.innerHTML=h;})();
+function togS(v,on){on?sset.add(v):sset.delete(v);applyF();}
+function allS(on){sset.clear();if(on)STAGES.forEach(v=>sset.add(v));document.querySelectorAll('#menuStage input').forEach(i=>i.checked=on);applyF();}
+function togE(v,on){on?eset.add(v):eset.delete(v);applyF();}
+function allE(on){eset.clear();if(on)EMS.forEach(v=>eset.add(v));document.querySelectorAll('#menuEcd input').forEach(i=>i.checked=on);applyF();}
+function togC(v,on){on?csel.add(v):csel.delete(v);applyF();}
+function allC(on){csel.clear();if(on)COUNTRIES.forEach(v=>csel.add(v));document.querySelectorAll('#menuCountry input').forEach(i=>i.checked=on);applyF();}
+const BAD={"Negotiation":"b-neg","Quote or Proposal":"b-quo","Demo or POC":"b-demo","Why Analysis":"b-why","Accepted Proposal":"b-acc","Qualification":"b-qual","Closed Won":"b-won","PO Invoiced":"b-won"};
+function esc(x){return (x||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function sm(a,f){return a.reduce((s,d)=>s+f(d),0);}
+function repTable(list){const m={};list.forEach(d=>{const v=m[d.r]||(m[d.r]={n:0,mrr:0,cm:0,q:0});v.n++;v.mrr+=d.m;v.cm+=(d.cm||0);if(d.q)v.q++;});
+ const arr=Object.entries(m).sort((a,b)=>b[1].mrr-a[1].mrr);let tn=0,tm=0,tc=0,tq=0;
+ let h='<table class="tbl"><thead><tr><th>Rep</th><th class="n">Deals</th><th class="n">Pipeline</th><th class="n">Can close</th><th class="n">Quoted</th></tr></thead><tbody>';
+ arr.forEach(([k,v])=>{tn+=v.n;tm+=v.mrr;tc+=v.cm;tq+=v.q;h+='<tr><td><b>'+esc(k)+'</b></td><td class="n">'+v.n+'</td><td class="n">'+money(v.mrr)+'</td><td class="n">'+money(v.cm)+'</td><td class="n">'+v.q+'/'+v.n+'</td></tr>';});
+ if(!arr.length)h+='<tr><td colspan=5 style="color:#868E96">No deals for the active categories.</td></tr>';
+ else h+='<tr class="tr-tot"><td>Total</td><td class="n">'+tn+'</td><td class="n">'+money(tm)+'</td><td class="n">'+money(tc)+'</td><td class="n">'+tq+'/'+tn+'</td></tr>';
+ return h+'</tbody></table>';}
+function topDeals(list,k){const a=[...list].sort((x,y)=>y.m-x.m).slice(0,k);
+ let h='<table class="tbl"><thead><tr><th>Account</th><th>Product</th><th>Stage</th><th class="n">MRR</th></tr></thead><tbody>';
+ a.forEach(d=>{h+='<tr><td><b>'+esc(d.o)+'</b> <span class="sub2">'+esc((d.r||"").split(" ")[0])+'</span></td><td>'+esc(d.p)+'</td><td><span class="badge '+(BAD[d.s]||"b-qual")+'">'+esc(d.s)+'</span></td><td class="n mono">'+money(d.m)+'</td></tr>';});
+ if(!a.length)h+='<tr><td colspan=4 style="color:#868E96">No deals for the active categories.</td></tr>';return h+'</tbody></table>';}
+function topAccts(list,k){const m={};list.forEach(d=>m[d.o]=(m[d.o]||0)+d.m);const a=Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,k);
+ let h='<table class="tbl"><thead><tr><th>Account</th><th class="n">MRR</th></tr></thead><tbody>';a.forEach(([o,v])=>h+='<tr><td>'+esc(o)+'</td><td class="n mono">'+money(v)+'</td></tr>');
+ if(!a.length)h+='<tr><td colspan=2 style="color:#868E96">—</td></tr>';return h+'</tbody></table>';}
+const EMPRANK={"1-10":10,"11-50":50,"51-250":250,"201-500":500,"251-500":500,"501-1000":1000,"1001+":1001};
+function topAcctsEmp(list,k){const m={};list.forEach(d=>{const rk=EMPRANK[d.emp]||0;if(!m[d.o]||rk>m[d.o].rk)m[d.o]={rk:rk,emp:d.emp||"-"};});
+ const a=Object.entries(m).sort((x,y)=>y[1].rk-x[1].rk).slice(0,k);
+ let h='<table class="tbl"><thead><tr><th>Account</th><th class="n">Employees</th></tr></thead><tbody>';a.forEach(([o,v])=>h+='<tr><td>'+esc(o)+'</td><td class="n">'+esc(v.emp)+'</td></tr>');if(!a.length)h+='<tr><td colspan=2 style="color:#868E96">-</td></tr>';return h+'</tbody></table>';}
+function topAcctsIB(list,k){const m={};list.forEach(d=>{if(!(d.oid in m))m[d.oid]={o:d.o,v:(DECK.IBMRR&&DECK.IBMRR[d.oid])||0};});
+ const a=Object.values(m).filter(x=>x.v>0).sort((x,y)=>y.v-x.v).slice(0,k);
+ let h='<table class="tbl"><thead><tr><th>Account</th><th class="n">Installed MRR</th></tr></thead><tbody>';a.forEach(x=>h+='<tr><td>'+esc(x.o)+'</td><td class="n mono">'+money(x.v)+'</td></tr>');if(!a.length)h+='<tr><td colspan=2 style="color:#868E96">No installed base</td></tr>';return h+'</tbody></table>';}
+function renderSummary(){const el=document.getElementById("blkSummary");if(!el)return;const items=[];
+ document.querySelectorAll(".repslide").forEach(sd=>{const rep=sd.dataset.rep,seg=sd.dataset.seg;
+  sd.querySelectorAll(".deal-row").forEach(r=>{const b=r.querySelector('[data-editkey^="blk:"]');const txt=b?b.textContent.trim():"";
+   if(txt){const ob=r.querySelector("td b");items.push({rep:rep,seg:seg,org:ob?ob.textContent:"",txt:txt});}});});
+ if(!items.length){el.innerHTML='<div class="mut" style="padding:8px">No blockers typed yet - add them on the rep slides.</div>';return;}
+ let h='<table class="tbl"><thead><tr><th>Account</th><th>Rep - Seg</th><th>Blocker / competition</th></tr></thead><tbody>';
+ items.forEach(x=>h+='<tr><td><b>'+esc(x.org)+'</b></td><td class="sub2">'+esc(x.rep)+' - '+(x.seg==="New Business"?"NB":"Exp")+'</td><td>'+esc(x.txt)+'</td></tr>');
+ el.innerHTML=h+'</tbody></table>';}
+function setT(id,t){const e=document.getElementById(id);if(e)e.textContent=t;}
+function applyF(){const active=new Set([...document.querySelectorAll("#menuCat input:checked")].map(i=>i.value));
+ const F=DECK.DEALS.filter(d=>d.c.some(c=>active.has(c))&&csel.has(d.co)&&sset.has(d.s)&&eset.has(d.em));
+ const Fw=DECK.WON.filter(d=>d.c.some(c=>active.has(c)));
+ const NB=F.filter(d=>d.g==="NB"),XP=F.filter(d=>d.g==="Exp");
+ setT("k-open",money(sm(F,d=>d.m)));setT("k-open-d",F.length+" deals · NB "+money(sm(NB,d=>d.m))+" · Exp "+money(sm(XP,d=>d.m)));setT("k-cm",money(sm(F,d=>d.cm||0)));setT("k-won",Fw.length);setT("k-won-d",money(sm(Fw,d=>d.m))+" MRR won");setT("k-q",F.filter(d=>d.q).length+"/"+F.length);
+ const wt=[...Fw].sort((a,b)=>b.m-a.m).slice(0,3).map(d=>esc(d.o)+" ("+money(d.m)+")").join(", ");
+ const ws=document.getElementById("wonstrip");if(ws)ws.innerHTML="<b>Recent wins:</b> "+wt+" <span class='mut'>· "+Fw.length+" FW deals won (active categories)</span>";
+ const eb=document.getElementById("exec-byrep");if(eb)eb.innerHTML=repTable(F);
+ document.querySelectorAll(".secslide").forEach(sd=>{const g=sd.dataset.seg;const data=F.filter(d=>d.g===g);
+  const q=sd.querySelector(".s-mrr");if(q)q.textContent=money(sm(data,d=>d.m));
+  const qd=sd.querySelector(".s-mrr-d");if(qd)qd.textContent=data.length+" open deals";
+  const cm=sd.querySelector(".s-cm");if(cm)cm.textContent=money(sm(data,d=>d.cm||0));
+  const qq=sd.querySelector(".s-q");if(qq)qq.innerHTML=data.filter(d=>d.q).length+'<span style="font-size:20px;color:#868E96">/'+data.length+'</span>';
+  const t=sd.querySelector(".s-top");if(t)t.innerHTML=topDeals(data,7);
+  const ac=sd.querySelector(".s-acct");const ah=sd.querySelector(".s-acct-h");if(g==="NB"){if(ah)ah.textContent="Largest accounts (employees)";if(ac)ac.innerHTML=topAcctsEmp(data,6);}else{if(ah)ah.textContent="Top accounts (installed MRR)";if(ac)ac.innerHTML=topAcctsIB(data,6);}
+  const br=sd.querySelector(".s-byrep");if(br)br.innerHTML=repTable(data);});
+ document.querySelectorAll(".deal-row").forEach(r=>{const cats=(r.dataset.cats||"").split(" ");r.style.display=(cats.some(c=>active.has(c))&&csel.has(r.dataset.country)&&sset.has(r.dataset.stage)&&eset.has(r.dataset.ecdm))?"":"none";});
+ document.querySelectorAll(".repslide").forEach(sd=>{const rep=sd.dataset.rep,g=sd.dataset.seg==="New Business"?"NB":"Exp";const d=F.filter(x=>x.r===rep&&x.g===g);
+  const C=sd.querySelector(".s-cnt"),A=sd.querySelector(".s-arr"),CM=sd.querySelector(".s-cm2"),Qn=sd.querySelector(".s-qn");
+  if(C)C.textContent=d.length+" deals";if(A)A.textContent=money(sm(d,x=>x.m));if(CM)CM.textContent=money(sm(d,x=>x.cm||0));if(Qn)Qn.textContent=d.filter(x=>x.q).length+"/"+d.length;});
+ setT("cCountry",csel.size===COUNTRIES.length?"(all)":"("+csel.size+")");setT("cStage",sset.size===STAGES.length?"(all)":"("+sset.size+")");setT("cEcd",eset.size===EMS.length?"(all)":"("+eset.size+")");}
+
+// Las notas vienen del archivo notas-cadencia.json que lee build_deck.py,
+// asi que un deck recien generado ya trae los blockers del mes anterior.
+const NOTAS=%%NOTAS%%;
+// Clave SIN la fecha del deck (16-sep-2026). Antes era "fwdeck:<fecha>:", y
+// eso hacia que cada regeneracion empezara en blanco: se perdian los 147
+// blockers, los talking points y los acuerdos.
+const LSK="fwdeck:notas:";
+let _tt;
+function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("on");clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove("on"),1200);}
+// Texto tal como lo genero build_deck.py, capturado ANTES de restaurar nada.
+// Sirve para no guardar como "nota" lo que en realidad es el contenido por
+// defecto del deck: los talking points tp2/tp3 vienen escritos por el
+// generador, y guardarlos congelaria ese texto en notas-cadencia.json y
+// pisaria futuras versiones del generador (16-sep-2026).
+const ORIG={};document.querySelectorAll("[data-editkey]").forEach(el=>{ORIG[el.dataset.editkey]=el.innerHTML.trim();});
+// Orden de preferencia: lo que se este editando en este navegador manda sobre
+// lo que venia del archivo, para no pisar una nota a medio escribir.
+function restoreEdits(){document.querySelectorAll("[data-editkey]").forEach(el=>{const k=el.dataset.editkey;let v=null;try{v=localStorage.getItem(LSK+k);}catch(_){}if(v===null&&NOTAS&&Object.prototype.hasOwnProperty.call(NOTAS,k))v=NOTAS[k];if(v!==null&&v!==undefined)el.innerHTML=v;});}
+// Junta todo lo editado en el objeto que se guarda en notas-cadencia.json.
+function recogerNotas(){const o={};document.querySelectorAll("[data-editkey]").forEach(el=>{const k=el.dataset.editkey,v=el.innerHTML.trim();if(v&&v!==ORIG[k])o[k]=v;});return o;}
+function guardarNotas(){const o=recogerNotas();const n=Object.keys(o).length;const b=new Blob([JSON.stringify(o,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="notas-cadencia.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast(n+" notas guardadas \u2713");}
+document.addEventListener("input",e=>{const el=e.target.closest?e.target.closest("[data-editkey]"):null;if(el){try{localStorage.setItem(LSK+el.dataset.editkey,el.innerHTML);toast("Saved \u2713");}catch(_){toast("Save failed");}}});
+function saveCopy(){const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;const b=new Blob([html],{type:"text/html"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Freshworks-CX-Pipeline-edited.html";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Copy downloaded");}
+restoreEdits();
+
+show(0);applyF();
+</script></body></html>
