@@ -812,7 +812,7 @@ def build_vendor_html(owner, secciones, generated_on):
     <p class="greeting">Hola {esc(first_name)}, esto es lo que hay que corregir en vTiger:</p>
     {bloque_deals}
     {bloque_farming}
-    <div class="footer">Generado automáticamente a partir de DIQ, FAR y Farming sin Producto ({date_str}). Cualquier duda, contacta a el responsable comercial.</div>
+    <div class="footer">Generado automáticamente a partir de DIQ, FAR y Farming sin Producto ({date_str}). Cualquier duda, escríbeme.</div>
   </div>
 </body></html>"""
 
