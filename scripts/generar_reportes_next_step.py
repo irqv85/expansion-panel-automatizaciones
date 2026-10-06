@@ -52,7 +52,7 @@ ALERT_EXPLANATIONS = {
     "Next Step sin fecha": "El <b>Next Step</b> no tiene una fecha reconocible. Agrégala (ej: 'Call;08/15/26').",
     "Next Step fecha inválida": "La fecha del <b>Next Step</b> no es válida (revisa día/mes/año).",
     "Next Step vencido": "El <b>Next Step</b> está vencido. Actualízalo con la próxima acción y fecha.",
-    "Next Step mal formado": (
+    "Next Step a corregir": (
         "El <b>Next Step</b> no sigue el formato acordado: <b>Acción; MM/DD/AAAA</b>. "
         "La acción va primero, separada por punto y coma, y el año con cuatro cifras "
         "(ej: <b>Call; 10/15/2026; validar presupuesto</b>). Después de la fecha puedes "
@@ -401,7 +401,7 @@ def next_step_quality_rows(diq_rows, validation_date):
         if parsed["ok"] and parsed["date"] < validation_date:
             alerts.append("Next Step vencido")
         if raw_next and parsed["ok"] and not formato_next_step_ok(raw_next):
-            alerts.append("Next Step mal formado")
+            alerts.append("Next Step a corregir")
         if raw_ecd not in (None, "") and not ecd_date:
             alerts.append("ECD formato inválido")
         if ecd_date and ecd_date < validation_date:
@@ -489,7 +489,7 @@ def farming_next_step_rows(active_farming, validation_date):
         if parsed["ok"] and parsed["date"] < validation_date:
             alerts.append("Next Step vencido")
         if raw_next and parsed["ok"] and not formato_next_step_ok(raw_next):
-            alerts.append("Next Step mal formado")
+            alerts.append("Next Step a corregir")
 
         checks.append(
             {
