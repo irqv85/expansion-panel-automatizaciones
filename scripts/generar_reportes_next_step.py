@@ -668,6 +668,12 @@ STYLE = """
           font-size: 11px; font-weight: 500; background: var(--gba-magenta-100); color: var(--gba-magenta-800); white-space: nowrap; }
   .count-chip { background: var(--gba-ink); color: #fff; }
   .footer { margin-top: 24px; font-size: 12px; color: var(--gba-700); }
+  .nota { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--gba-300);
+          font-size: 12px; line-height: 1.6; color: var(--gba-700); }
+  .nota b { font-weight: 600; color: var(--gba-900); }
+  .nota code { font-family: ui-monospace, Consolas, "Courier New", monospace;
+               font-size: 12px; background: var(--gba-100); border-radius: 4px;
+               padding: 1px 5px; color: var(--gba-900); }
   h2.bloque { font-size: 22px; font-weight: 500; margin: 32px 0 4px; letter-spacing: -0.005em; }
   h2.bloque::after { content: ""; display: block; width: 48px; height: 8px; background: var(--gba-magenta); border-radius: var(--radius-pill); margin-top: 10px; }
   h2.bloque-sub { font-size: 15px; font-weight: 500; color: var(--gba-700); margin: 20px 0 8px; }
@@ -845,6 +851,12 @@ def build_vendor_html(owner, secciones, generated_on):
     <p class="greeting">Hola {esc(first_name)}, esto es lo que hay que corregir en vTiger:</p>
     {bloque_deals}
     {bloque_farming}
+    <div class="nota">
+      <b>Cómo se escribe el Next Step:</b> <code>Acción; MM/DD/AAAA</code> y, si hace
+      falta, el detalle después de la fecha. La acción va primero, separada por punto
+      y coma, y el año con cuatro cifras.<br>
+      Ejemplo: <code>Call; 10/15/2026; validar presupuesto con el CFO</code>
+    </div>
     <div class="footer">Generado automáticamente a partir de DIQ, FAR y Farming sin Producto ({date_str}). Cualquier duda, escríbeme.</div>
   </div>
 </body></html>"""
