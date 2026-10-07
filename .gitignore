@@ -50,3 +50,6 @@ desktop.ini
 
 # Logs que escriben los scripts al correr.
 *.log
+
+# Preferencias del one-pager: son de cada instalacion.
+scripts/onepager_config.json

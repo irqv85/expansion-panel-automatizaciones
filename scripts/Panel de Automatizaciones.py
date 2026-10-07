@@ -1905,6 +1905,52 @@ class ForecastOptionsWindow(tk.Toplevel):
         self.destroy()
 
 
+# --- One-pager comercial (7-oct-2026) ---------------------------------------
+# Las herramientas que GB puede proponer. El texto corto es lo que ve el
+# usuario; la descripcion va al prompt para que el modelo sepa a que publico
+# apunta cada una sin tener que deducirlo.
+ONEPAGER_HERRAMIENTAS = {
+    "NinjaOne": "gestion de endpoints (parcheo, control remoto, monitoreo), "
+                "integracion oficial con Freshservice, minimo 50 endpoints",
+    "Atera": "RMM con helpdesk y PSA propios, precio por tecnico, para equipos "
+             "de TI pequenos o MSP",
+    "Humand": "experiencia del empleado, comunicacion interna, onboarding, "
+              "personal sin correo",
+    "Halo": "HaloITSM / HaloCRM / HaloPSA, REEMPLAZA a Freshservice o Freshdesk, "
+            "solo con un detonante real en la cuenta",
+}
+ONEPAGER_AGENTES_MAX = 5
+ONEPAGER_AGENTES_DEFAULT = 3
+ONEPAGER_CONFIG_FILE = SCRIPT_DIR / "onepager_config.json"
+
+
+def cargar_config_onepager():
+    """Preferencias del one-pager, tal como quedaron la ultima vez.
+
+    Si el archivo no existe o quedo corrupto se vuelve al automatico, que es el
+    comportamiento del skill: elegir la herramienta por la brecha de la cuenta."""
+    base = {"herramientas": [], "agentes": ONEPAGER_AGENTES_DEFAULT}
+    if ONEPAGER_CONFIG_FILE.exists():
+        try:
+            with open(ONEPAGER_CONFIG_FILE, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            base["herramientas"] = [h for h in d.get("herramientas", [])
+                                    if h in ONEPAGER_HERRAMIENTAS]
+            base["agentes"] = max(1, min(int(d.get("agentes", ONEPAGER_AGENTES_DEFAULT)),
+                                         ONEPAGER_AGENTES_MAX))
+        except Exception:
+            pass
+    return base
+
+
+def guardar_config_onepager(config):
+    try:
+        with open(ONEPAGER_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 def cargar_limite_gbs_org():
     """Cuantas organizaciones entran por corrida, tal como quedo la ultima
     vez (se guarda para no tener que elegirlo de nuevo en cada arranque)."""
@@ -1924,6 +1970,80 @@ def guardar_limite_gbs_org(valor):
             json.dump({"limite": int(valor)}, f)
     except Exception:
         pass
+
+
+class OnepagerConfigWindow(tk.Toplevel):
+    """Que herramienta propone el one-pager y con cuantos agentes investiga.
+
+    Sin nada marcado, el skill elige por la brecha real de la cuenta, que es lo
+    que conviene casi siempre. Marcar una o varias sirve para cuando ya hay una
+    conversacion abierta sobre un producto concreto y el documento tiene que ir
+    de eso, no de lo que el modelo crea mejor."""
+
+    def __init__(self, panel, config, on_apply):
+        super().__init__(panel.root)
+        self.on_apply = on_apply
+        self.title("Configuración del one-pager")
+        self.configure(bg=BG_APP)
+        self.transient(panel.root)
+        self.resizable(False, False)
+        self.lift()
+        self.grab_set()
+
+        pad = 20
+        tk.Label(self, text="¿Qué herramienta debe proponer?", font=f_med(13),
+                 bg=BG_APP, fg=GBA_INK).pack(anchor="w", padx=pad, pady=(pad, 4))
+        tk.Label(self,
+                 text="Sin marcar nada, la elige según la brecha real de la cuenta: sus "
+                      "assets,\nmercado, tipo de empresa, histórico de deals, farmings y "
+                      "comentarios.\nMarcá una o varias para forzarla.",
+                 font=f_reg(9), bg=BG_APP, fg=GBA_700,
+                 justify="left").pack(anchor="w", padx=pad, pady=(0, 12))
+
+        caja = tk.Frame(self, bg=BG_APP)
+        caja.pack(anchor="w", padx=pad)
+        self._boxes = {}
+        for nombre, detalle in ONEPAGER_HERRAMIENTAS.items():
+            fila = tk.Frame(caja, bg=BG_APP)
+            fila.pack(anchor="w", pady=2)
+            box = Checkbox(fila, nombre, None,
+                           checked=nombre in config["herramientas"], surface=BG_APP)
+            box.pack(side="left")
+            tk.Label(fila, text=detalle, font=f_reg(9), bg=BG_APP, fg=GBA_700,
+                     wraplength=330, justify="left").pack(side="left", padx=(10, 0))
+            self._boxes[nombre] = box
+
+        tk.Label(self, text="Agentes en paralelo para buscar casos de uso",
+                 font=f_med(11), bg=BG_APP, fg=GBA_INK).pack(anchor="w", padx=pad,
+                                                             pady=(18, 2))
+        tk.Label(self,
+                 text=f"Entre 1 y {ONEPAGER_AGENTES_MAX}. Más agentes cubren más fuentes "
+                      "a la vez y tardan menos,\npero consumen más créditos de Claude.",
+                 font=f_reg(9), bg=BG_APP, fg=GBA_700,
+                 justify="left").pack(anchor="w", padx=pad, pady=(0, 8))
+
+        fila_ag = tk.Frame(self, bg=BG_APP)
+        fila_ag.pack(anchor="w", padx=pad)
+        self._agentes = tk.IntVar(value=config["agentes"])
+        for n in range(1, ONEPAGER_AGENTES_MAX + 1):
+            tk.Radiobutton(fila_ag, text=str(n), value=n, variable=self._agentes,
+                           font=f_reg(10), bg=BG_APP, fg=GBA_INK,
+                           activebackground=BG_APP, selectcolor=GBA_WHITE,
+                           highlightthickness=0, bd=0).pack(side="left", padx=(0, 12))
+
+        fila_btn = tk.Frame(self, bg=BG_APP)
+        fila_btn.pack(anchor="e", padx=pad, pady=(20, pad))
+        PillButton(fila_btn, "Cancelar", self.destroy, surface=BG_APP).pack(side="left",
+                                                                           padx=(0, 8))
+        PillButton(fila_btn, "Guardar", self._aplicar, "primary",
+                   surface=BG_APP).pack(side="left")
+
+    def _aplicar(self):
+        self.on_apply({
+            "herramientas": [n for n, b in self._boxes.items() if b.checked],
+            "agentes": int(self._agentes.get()),
+        })
+        self.destroy()
 
 
 class CantidadOrgsWindow(tk.Toplevel):
@@ -2386,27 +2506,34 @@ class Panel:
         # semaforo, porque se pide a mano y no hay nada que vigilar.
         self.onepager_card = StatusCard(cuerpo, "One-pager comercial")
         celda_grid(self.onepager_card, 1, 1)
-        self.onepager_card.set_status(
-            COLOR_GRAY,
-            "Pegá la ficha de vTiger de la organización, o el sitio web de la empresa.")
+        self.onepager_config = cargar_config_onepager()
+        self.onepager_card.set_status(COLOR_GRAY, self._texto_onepager())
         self.onepager_card.button_row.grid_configure(sticky="sew")
-        fila_op = tk.Frame(self.onepager_card.button_row, bg=CARD_BG)
-        fila_op.pack(anchor="w", fill="x", expand=True)
-        tk.Label(fila_op, text="URL:", font=f_reg(10), bg=CARD_BG,
+        # Dos filas: la URL arriba a lo ancho y los botones abajo. En una sola
+        # fila, con tres botones empujados a la derecha, al campo le quedaban
+        # unos pocos pixeles y no se veia lo que se pegaba (7-oct-2026).
+        fila_url = tk.Frame(self.onepager_card.button_row, bg=CARD_BG)
+        fila_url.pack(anchor="w", fill="x", expand=True)
+        tk.Label(fila_url, text="URL:", font=f_reg(10), bg=CARD_BG,
                  fg=GBA_700).pack(side="left", padx=(0, 8))
-        self.btn_onepager_abrir = PillButton(fila_op, "Abrir carpeta",
-                                             lambda: open_folder(ONEPAGER_DIR))
-        self.btn_onepager_abrir.pack(side="right", padx=(8, 0))
-        self.btn_onepager = PillButton(fila_op, "Generar",
-                                       self.generar_onepager, "primary")
-        self.btn_onepager.pack(side="right", padx=(8, 0))
         self.var_onepager = tk.StringVar()
         self.entry_onepager = tk.Entry(
-            fila_op, textvariable=self.var_onepager, font=f_reg(11), width=16,
+            fila_url, textvariable=self.var_onepager, font=f_reg(11), width=16,
             bg=GBA_WHITE, fg=GBA_INK, relief="flat", highlightthickness=1,
             highlightbackground=GBA_300, highlightcolor=GBA_MAGENTA)
         self.entry_onepager.pack(side="left", fill="x", expand=True, ipady=6)
         self.entry_onepager.bind("<Return>", lambda _e: self.generar_onepager())
+
+        fila_op = tk.Frame(self.onepager_card.button_row, bg=CARD_BG)
+        fila_op.pack(anchor="w", fill="x", expand=True, pady=(8, 0))
+        self.btn_onepager = PillButton(fila_op, "Generar",
+                                       self.generar_onepager, "primary")
+        self.btn_onepager.pack(side="left")
+        PillButton(fila_op, "Configurar",
+                   self.configurar_onepager).pack(side="left", padx=(8, 0))
+        self.btn_onepager_abrir = PillButton(fila_op, "Abrir carpeta",
+                                             lambda: open_folder(ONEPAGER_DIR))
+        self.btn_onepager_abrir.pack(side="left", padx=(8, 0))
 
         self.freshworks_window = FreshworksWindow(self)
         if gen_ns.MOSTRAR_FRESHWORKS:
@@ -3353,6 +3480,30 @@ class Panel:
         except Exception as exc:
             self.log(f"No se pudieron copiar las notas desde Descargas: {exc}")
 
+    def _texto_onepager(self):
+        """Resume en la tarjeta que va a hacer, para no tener que abrir la
+        configuracion solo para recordar como quedo."""
+        cfg = self.onepager_config
+        elegidas = cfg["herramientas"]
+        if elegidas:
+            que = "Propone " + ", ".join(elegidas)
+        else:
+            que = "Elige la herramienta según la brecha de la cuenta"
+        return (f"Pegá la ficha de vTiger de la organización, o el sitio web de la "
+                f"empresa. {que}, con {cfg['agentes']} agente(s) buscando casos.")
+
+    def configurar_onepager(self):
+        OnepagerConfigWindow(self, self.onepager_config, self._aplicar_config_onepager)
+
+    def _aplicar_config_onepager(self, config):
+        self.onepager_config = config
+        guardar_config_onepager(config)
+        self.onepager_card.set_status(COLOR_GRAY, self._texto_onepager())
+        elegidas = config["herramientas"]
+        self.log("One-pager: " + ("propondrá " + ", ".join(elegidas) if elegidas
+                                  else "elegirá la herramienta según la cuenta") +
+                 f", con {config['agentes']} agente(s) en paralelo.")
+
     def generar_onepager(self):
         """Arma el one-pager de una organizacion a partir de una URL.
 
@@ -3375,9 +3526,33 @@ class Panel:
         self.btn_onepager.set_enabled(False)
         self.log(f"Generando el one-pager de {crudo[:70]}…")
         self.log("Busca casos de uso documentados en internet, así que tarda unos minutos.")
+        cfg = self.onepager_config
+        if cfg["herramientas"]:
+            # Forzar la herramienta NO exime de justificarla: si la cuenta no da
+            # para ella, es mejor que lo diga a que fabrique una brecha.
+            instruccion_prod = (
+                "HERRAMIENTA A PROPONER (la fijó quien pidió el documento, no la "
+                f"elijas vos): {', '.join(cfg['herramientas'])}. Igual tenés que "
+                "justificarla con la brecha real de la cuenta; si los datos no la "
+                "sostienen, decilo en el informe final en vez de inventar una "
+                "necesidad que no se ve en el expediente.\n\n")
+        else:
+            instruccion_prod = (
+                "Elegí vos la herramienta, como dice el Paso 3 del skill: por la "
+                "brecha real de la cuenta y nunca por defecto.\n\n")
         prompt = (
             f"Sigue el skill en {ONEPAGER_SKILL_FILE} (ignora el frontmatter YAML) al "
             f"pie de la letra. La URL de entrada es: {crudo}\n\n"
+            + instruccion_prod +
+            "Para decidir y para redactar, apoyate en TODO lo que tenga la cuenta en "
+            "vTiger: assets contratados, mercado y país, tipo y tamaño de empresa, "
+            "histórico de deals ganados y perdidos con su motivo, farmings y sus "
+            "etapas, y los comentarios y tags recientes. La recomendación tiene que "
+            "poder rastrearse hasta algo de ese expediente.\n\n"
+            f"Podés usar hasta {cfg['agentes']} agente(s) en paralelo con el tool "
+            "Workflow para la búsqueda de casos de uso del Paso 4, que es la parte "
+            "lenta. El análisis de la cuenta y la redacción final hacelos vos: son "
+            "decisiones que necesitan ver el expediente completo de una sola vez.\n\n"
             f"Guarda el HTML en {ONEPAGER_DIR} (créala si no existe) con el nombre "
             "onepager_<nombre-organizacion>.html que indica el skill.\n\n"
             "Recordá dos reglas del skill que son las que más se rompen: no inventes "

@@ -17,7 +17,9 @@ PASO 2: DATOS A REUNIR (solo lectura)
 Industria, pais, tamano, vendedor asignado, contactos clave con cargo, oportunidades abiertas y cerradas, productos ya contratados con GB, comentarios y tags recientes. Infiere el stack actual (Freshservice, Freshdesk, otro ITSM, herramientas de endpoints). Nunca inventes datos ni cifras.
 
 PASO 3: ELEGIR PRODUCTOS (maximo 2, o 3 si se justifica)
-Elige por la brecha real de la cuenta, nunca por defecto.
+Elige por la brecha real de la cuenta, nunca por defecto. La brecha sale del expediente completo del Paso 2: assets ya contratados, mercado y pais, tipo y tamano de empresa, historico de deals ganados y perdidos con su motivo, farmings y sus etapas, y los comentarios y tags recientes. La recomendacion tiene que poder rastrearse hasta algo de ese expediente; si no, no la hagas.
+
+Si quien pide el documento ya fijo la herramienta, respetala, pero igual justificala con la brecha real. Si los datos de la cuenta no la sostienen, dilo en el informe final en vez de fabricar una necesidad que no se ve en el expediente.
 - NinjaOne: gestion de endpoints (parcheo, control remoto, monitoreo). Se integra de forma oficial con Freshservice: crea tickets desde alertas y cruza dispositivos con activos por numero de serie. Precio por endpoint, minimo de 50. Para equipos de TI medianos o grandes.
 - Atera: RMM con helpdesk y PSA propios, precio por tecnico (verificar). Para equipos de TI pequenos o MSP con pocos tecnicos y muchos endpoints. Con un cliente Freshservice satisfecho, presentalo solo como capa RMM, no como reemplazo del ITSM. Verifica por busqueda web cualquier capacidad o integracion antes de afirmarla.
 - Humand: experiencia del empleado, comunicacion interna, onboarding, personal sin correo (operativo, retail, planta).
@@ -27,6 +29,10 @@ Contexto verificado: Freshservice no tiene control remoto ni parcheo nativos y l
 PASO 4: INVESTIGAR CASOS DE USO REALES (busqueda web)
 Para cada producto elegido, busca en internet casos reales de empresas del mismo ramo y, si no hay, de ramos cercanos o de tamano similar y region similar (prioriza Latinoamerica y el Caribe).
 Fuentes validas: paginas de casos de exito del fabricante, notas de prensa, articulos de prensa especializada, publicaciones de la propia empresa. Haz al menos 3 busquedas distintas por producto antes de concluir que no hay casos.
+
+Esta es la parte lenta, y se puede paralelizar: usa el tool Workflow con hasta 5 agentes a la vez, uno por producto o por linea de busqueda, cada uno con el encargo de traer casos verificables con su URL. El tope lo fija quien pide el documento (por defecto 3), porque cada agente consume creditos.
+
+Lo que NO se delega: el analisis de la cuenta del Paso 2, la eleccion de producto del Paso 3 y la redaccion final. Esas decisiones necesitan ver el expediente completo de una sola vez, y repartirlas entre agentes que solo ven un pedazo es como se terminan recomendando cosas que no encajan con la cuenta. Ademas, verifica tu mismo que cada URL que te devuelva un agente abra de verdad antes de citarla: un caso inventado con una URL plausible es el error mas caro de este documento.
 Reglas estrictas:
 - Cita solo casos que encuentres y puedas abrir. Cada caso lleva nombre de la empresa, resultado reportado y URL de la fuente. Nunca inventes empresas, cifras ni citas.
 - Reporta las cifras tal como las publica la fuente, exactas, y di que son datos del fabricante o de la empresa. No las presentes como garantia de resultado para este cliente.
