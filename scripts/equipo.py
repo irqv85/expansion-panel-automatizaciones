@@ -73,8 +73,11 @@ VENDEDORES = {
     v["nombre"]: v["correo"] for v in _datos["vendedores"] if v.get("correo")
 }
 
-#: Copia fija en los envios de presentaciones. Vacio si no se configura.
-CC_EMAIL = _datos.get("cc_presentaciones", "")
+#: Copia fija en TODOS los envios: los reportes de Calidad CRM y las
+#: presentaciones de Sofia. Se llamaba cc_presentaciones, que enganaba porque
+#: tambien lo usa Calidad CRM; se acepta el nombre viejo para no romper una
+#: configuracion existente (7-oct-2026).
+CC_EMAIL = (_datos.get("cc_fijo") or _datos.get("cc_presentaciones") or "").strip()
 
 #: Texto que debe contener el nombre del export de vTiger para que este panel lo
 #: considere. Sirve cuando hay mas de un equipo bajando reportes a la misma
