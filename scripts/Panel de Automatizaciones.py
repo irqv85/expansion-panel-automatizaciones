@@ -111,6 +111,7 @@ from paths import (
     GBS_MAKER_DIR,
     GBS_ORG_MAKER_DIR,
     METRICAS_DIR,
+    ONEPAGER_DIR,
     PRESENTACIONES_DIR,
     RUTINAS_DIR,
     claude_bin,
@@ -239,6 +240,7 @@ FORECAST_CATEGORY_LABELS = {"CX": "CX", "EX": "EX", "D42": "Device 42", "AI": "F
                             "PF": "Payment Frequency", "Other": "Other"}
 FORECAST_SEGMENT_OPTIONS = ["New Business", "Expansion"]
 FW_CADENCE_SKILL_FILE = skill_file("fw-cadence-deck")
+ONEPAGER_SKILL_FILE = skill_file("onepager-comercial")
 FW_CADENCE_RE = re.compile(r"^Freshworks-CX-Pipeline-(\d{4}-\d{2})-\d{2}\.html$")
 
 # ---- colores de semaforo (el resto de los tokens de marca va en la seccion UI) ----
@@ -2378,6 +2380,34 @@ class Panel:
         # La ventana se construye SIEMPRE aunque la tarjeta no se muestre: mas
         # abajo se toman referencias a sus tarjetas (forecast_card,
         # cadence_card) y sin ella habria que desmontar medio archivo.
+        # --- One-pager comercial (7-oct-2026) ---
+        # Ocupa el hueco que dejo Freshworks al apagarse. Mismo patron que
+        # "Presentacion de cliente": un campo de texto y un boton, sin
+        # semaforo, porque se pide a mano y no hay nada que vigilar.
+        self.onepager_card = StatusCard(cuerpo, "One-pager comercial")
+        celda_grid(self.onepager_card, 1, 1)
+        self.onepager_card.set_status(
+            COLOR_GRAY,
+            "Pegá la ficha de vTiger de la organización, o el sitio web de la empresa.")
+        self.onepager_card.button_row.grid_configure(sticky="sew")
+        fila_op = tk.Frame(self.onepager_card.button_row, bg=CARD_BG)
+        fila_op.pack(anchor="w", fill="x", expand=True)
+        tk.Label(fila_op, text="URL:", font=f_reg(10), bg=CARD_BG,
+                 fg=GBA_700).pack(side="left", padx=(0, 8))
+        self.btn_onepager_abrir = PillButton(fila_op, "Abrir carpeta",
+                                             lambda: open_folder(ONEPAGER_DIR))
+        self.btn_onepager_abrir.pack(side="right", padx=(8, 0))
+        self.btn_onepager = PillButton(fila_op, "Generar",
+                                       self.generar_onepager, "primary")
+        self.btn_onepager.pack(side="right", padx=(8, 0))
+        self.var_onepager = tk.StringVar()
+        self.entry_onepager = tk.Entry(
+            fila_op, textvariable=self.var_onepager, font=f_reg(11), width=16,
+            bg=GBA_WHITE, fg=GBA_INK, relief="flat", highlightthickness=1,
+            highlightbackground=GBA_300, highlightcolor=GBA_MAGENTA)
+        self.entry_onepager.pack(side="left", fill="x", expand=True, ipady=6)
+        self.entry_onepager.bind("<Return>", lambda _e: self.generar_onepager())
+
         self.freshworks_window = FreshworksWindow(self)
         if gen_ns.MOSTRAR_FRESHWORKS:
             self.freshworks_card = StatusCard(cuerpo, "Freshworks")
@@ -3322,6 +3352,51 @@ class Panel:
                      "El deck saldrá con ellas.")
         except Exception as exc:
             self.log(f"No se pudieron copiar las notas desde Descargas: {exc}")
+
+    def generar_onepager(self):
+        """Arma el one-pager de una organizacion a partir de una URL.
+
+        No se extrae ningun id aqui a proposito: la skill acepta tanto la ficha
+        de vTiger como el sitio web de la empresa, y resuelve ella la cuenta. El
+        panel solo comprueba que parezca una URL, para no lanzar una corrida
+        larga por un pegado en blanco o un texto suelto."""
+        crudo = self.var_onepager.get().strip()
+        if not crudo:
+            self.log("Pegá la URL de la organización antes de generar.")
+            return
+        if not ONEPAGER_SKILL_FILE.exists():
+            self.log(f"No se encontró el skill en {ONEPAGER_SKILL_FILE}. Abortando.")
+            return
+        if not re.match(r"^https?://", crudo, re.I):
+            self.log(f"«{crudo[:60]}» no parece una URL. Pegá la ficha de la "
+                     "organización en vTiger, o el sitio web de la empresa.")
+            return
+
+        self.btn_onepager.set_enabled(False)
+        self.log(f"Generando el one-pager de {crudo[:70]}…")
+        self.log("Busca casos de uso documentados en internet, así que tarda unos minutos.")
+        prompt = (
+            f"Sigue el skill en {ONEPAGER_SKILL_FILE} (ignora el frontmatter YAML) al "
+            f"pie de la letra. La URL de entrada es: {crudo}\n\n"
+            f"Guarda el HTML en {ONEPAGER_DIR} (créala si no existe) con el nombre "
+            "onepager_<nombre-organizacion>.html que indica el skill.\n\n"
+            "Recordá dos reglas del skill que son las que más se rompen: no inventes "
+            "empresas, cifras ni citas en los casos de uso (si no encontrás un caso "
+            "verificable con URL abrible, decilo y usá una aplicación sugerida en su "
+            "lugar), y separá siempre lo documentado de lo que vos proponés.\n\n"
+            "Al terminar, informá qué productos elegiste y por qué, cuántos casos "
+            "documentados encontraste por producto con sus URLs, cuáles aplicaciones "
+            "son sugeridas, y qué datos quedaron «por confirmar»."
+        )
+        self.run_claude_headless(prompt, on_done=self._tras_onepager)
+
+    def _tras_onepager(self, code):
+        self.btn_onepager.set_enabled(True)
+        if code != 0:
+            self.log("El one-pager terminó con error. Revisá el detalle de arriba.")
+            return
+        self.var_onepager.set("")
+        self.log(f"One-pager listo. Está en {ONEPAGER_DIR}.")
 
     def generar_deck_cliente(self):
         """Genera el deck de 9 slides de UNA cuenta, a partir del link que el responsable comercial
