@@ -53,3 +53,6 @@ desktop.ini
 
 # Preferencias del one-pager: son de cada instalacion.
 scripts/onepager_config.json
+
+# One-pagers generados: son documentos de cliente y se regeneran.
+One-pagers/
