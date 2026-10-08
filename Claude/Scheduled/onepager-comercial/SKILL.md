@@ -39,16 +39,48 @@ Reglas estrictas:
 - Parafrasea. No copies texto de las fuentes ni uses mas de una frase corta literal por pagina, entre comillas y con atribucion.
 - No cites clientes de competidores directos de GB ni casos sin fuente publica.
 - Si no encuentras un caso verificable para un producto o ramo, no lo rellenes: usa en su lugar una aplicacion sugerida (ver abajo) y di que es una propuesta, no un caso.
-Separa siempre dos cosas en la pagina:
-  1. Casos documentados: lo que hizo otra empresa, con fuente.
-  2. Aplicaciones sugeridas para esta organizacion: 2 o 3 usos concretos que tu propones segun su industria, tamano y stack, redactados como hipotesis a validar y ligados a la brecha detectada en el paso 2.
+Separa siempre dos cosas en la pagina, y que se note cual es cual:
+  1. Casos documentados: lo que hizo otra empresa, con su fuente. Aqui van cifras, siempre atribuidas a quien las publico.
+  2. Como se aplicaria en su operacion: 2 o 3 usos concretos para esta organizacion, segun su industria, tamano y stack. Son propuestas nuestras, asi que van en condicional ("permitiria", "se podria") y sin cifras inventadas. Como el documento lo lee el cliente, NO los rotules "hipotesis" ni "por validar": se redactan como lo que son, ideas concretas de aplicacion que queremos conversar con el.
 
-PASO 5: CONTENIDO (enfoque de asesor)
-Orden: la brecha que vemos en su operacion, la recomendacion, casos documentados del ramo, aplicaciones sugeridas para ellos, resultado de negocio esperado, y un siguiente paso concreto con el nombre del vendedor asignado. Primero analisis neutral, despues recomendacion, siempre en terminos del resultado para el cliente y no de funciones del producto. No incluyas precios ni paquetes salvo que los hayas verificado por busqueda web en esta corrida, y en ese caso indica la fecha de consulta.
+PASO 5: CONTENIDO (documento comercial, se lo mandamos al cliente)
+
+ESTE DOCUMENTO LO LEE EL CLIENTE. No es un analisis interno: es una pieza comercial que el vendedor le comparte por correo o le deja despues de una reunion. Escribilo hablandole a el, de usted o de ustedes, no hablando de el en tercera persona.
+
+Orden de la pagina:
+1. Una apertura corta que diga que entendemos de su operacion y por que le escribimos ahora. Una o dos frases.
+2. La oportunidad: que gana si resuelve eso. En terminos de su negocio, no de funciones del producto.
+3. La propuesta: la herramienta recomendada y que hace, en dos o tres frases.
+4. Casos documentados de empresas de su ramo, con el resultado que publico la fuente.
+5. Como se aplicaria en su operacion: dos o tres usos concretos para ellos.
+6. El cierre: la invitacion a una demo o a una llamada (ver abajo).
+
+QUE NUNCA SALE EN LA PAGINA. El expediente de vTiger es insumo para decidir, no material para publicar. El cliente no puede leer:
+- Comentarios, notas internas ni tags del CRM, ni parafraseados.
+- Motivos de deals perdidos, montos de oportunidades, etapas del pipeline, nombres de competidores con los que lo comparamos.
+- Marcas de "por confirmar", "pendiente de validar", "hipotesis" o cualquier senal de que hay un hueco en nuestros datos. Si un dato no esta confirmado, no lo escribas; no lo marques.
+- Juicios sobre su madurez, su desorden, su falta de procesos, o cualquier cosa que suene a auditoria. La brecha se nombra como oportunidad, nunca como reproche.
+Si al leer una frase se nota que salio de nuestro CRM, reescribila o quitala.
+
+EL CIERRE (obligatorio)
+La pagina SIEMPRE termina invitando a una demo o a una llamada. Una sola accion, no dos. Elegi cual segun la cuenta: demo cuando la herramienta se entiende mejor viendola y hay un equipo tecnico que la va a evaluar, llamada cuando la conversacion es de negocio o todavia falta entender su contexto.
+El cierre lleva el nombre del vendedor asignado y su correo, y propone algo concreto y corto, del estilo "una sesion de 30 minutos para mostrarle como se veria esto con sus propios equipos". Nada de "contactenos" ni "no dude en escribirnos".
+Si no se pudo resolver el vendedor asignado, usa un cierre a nombre de GB Advisors sin inventar una persona.
 
 REGLAS DE REDACCION
-Idioma: espanol, salvo que el pais o el contacto indique ingles. Nunca uses rayas largas (em dashes): usa comas, dos puntos o puntos. Cifras exactas, sin aproximaciones ni signo "+". Tono profesional, directo y pragmatico, sin relleno ni lenguaje de hype. Poco texto en negrita, prosa sobre listas, tablas solo para comparar.
+Idioma: espanol, salvo que el pais o el contacto indique ingles. Nunca uses rayas largas (em dashes): usa comas, dos puntos o puntos. Cifras exactas, sin aproximaciones ni signo "+". Tono profesional y comercial: cercano y concreto, sin relleno ni lenguaje de hype, sin superlativos ni promesas que no podamos sostener. Poco texto en negrita, prosa sobre listas, tablas solo para comparar.
+Las cifras de los casos son de la fuente, no promesas nuestras: atribuilas siempre ("segun el caso publicado por el fabricante", "segun reporto la propia empresa"). Nunca escribas que el cliente va a obtener ese mismo resultado.
+No incluyas precios ni paquetes salvo que los hayas verificado por busqueda web en esta corrida, y en ese caso indica la fecha de consulta.
 
 ESTILO Y SALIDA
-Usa la skill anthropic-skills:gb-advisors-design para colores, tipografia, logo y componentes. Una sola pagina tamano carta, HTML autocontenido e imprimible a PDF (@page, sin scroll). Si el contenido no cabe, recorta casos o aplicaciones antes de reducir la tipografia por debajo de lo legible. Pon las URLs de las fuentes de los casos en un pie pequeno de la pagina. Guardalo como onepager_<nombre-organizacion>.html en la carpeta de salida del proyecto, tomando las rutas de scripts/paths.py.
-Al terminar, informa en pocas lineas: que productos elegiste y por que, cuantos casos documentados encontraste por producto (con sus URLs), cuales aplicaciones son solo sugeridas, y que datos quedaron "por confirmar".
+Usa la skill anthropic-skills:gb-advisors-design para colores, tipografia, logo y componentes. Tiene que verse como una pieza comercial de GB que el cliente abre sin contexto previo: logo arriba, el nombre de su organizacion visible, y el cierre con la invitacion destacado al pie.
+Una sola pagina tamano carta, HTML autocontenido e imprimible a PDF (@page, sin scroll). Si el contenido no cabe, recorta casos o aplicaciones antes de reducir la tipografia por debajo de lo legible; el cierre con la invitacion no se recorta nunca.
+Pon las URLs de las fuentes de los casos en un pie pequeno de la pagina: le dan credibilidad a las cifras y dejan claro que no son nuestras.
+Guardalo como onepager_<nombre-organizacion>.html en la carpeta de salida del proyecto, tomando las rutas de scripts/paths.py.
+
+AL TERMINAR, informa en el chat (esto NO va en la pagina, es para quien va a mandar el documento):
+- Que herramienta elegiste y en que dato de la cuenta te apoyaste.
+- Cuantos casos documentados encontraste por producto, con sus URLs, para que se puedan verificar antes de enviar.
+- Cuales aplicaciones son propuestas nuestras y no casos reales.
+- Que datos quedaron sin confirmar y por eso NO entraron en la pagina.
+- Si fuerzaron una herramienta y los datos de la cuenta no la sostienen, dilo aqui con claridad.
