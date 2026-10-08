@@ -3531,15 +3531,16 @@ class Panel:
             # Forzar la herramienta NO exime de justificarla: si la cuenta no da
             # para ella, es mejor que lo diga a que fabrique una brecha.
             instruccion_prod = (
-                "HERRAMIENTA A PROPONER (la fijó quien pidió el documento, no la "
-                f"elijas vos): {', '.join(cfg['herramientas'])}. Igual tenés que "
-                "justificarla con la brecha real de la cuenta; si los datos no la "
-                "sostienen, decilo en el informe final en vez de inventar una "
-                "necesidad que no se ve en el expediente.\n\n")
+                "HERRAMIENTAS A PROPONER (las fijó quien pidió el documento, no las "
+                f"elijas vos): {', '.join(cfg['herramientas'])}. UNA PÁGINA POR CADA "
+                "UNA. Igual tenés que justificar cada una con la brecha real de la "
+                "cuenta; si los datos no la sostienen, decilo en el informe final en "
+                "vez de inventar una necesidad que no se ve en el expediente.\n\n")
         else:
             instruccion_prod = (
-                "Elegí vos la herramienta, como dice el Paso 3 del skill: por la "
-                "brecha real de la cuenta y nunca por defecto.\n\n")
+                "Elegí vos las herramientas, como dice el Paso 3 del skill: por la "
+                "brecha real de la cuenta y nunca por defecto. Generá UNA PÁGINA POR "
+                "CADA herramienta que aplique, hasta 3.\n\n")
         prompt = (
             f"Sigue el skill en {ONEPAGER_SKILL_FILE} (ignora el frontmatter YAML) al "
             f"pie de la letra. La URL de entrada es: {crudo}\n\n"
@@ -3553,8 +3554,15 @@ class Panel:
             "Workflow para la búsqueda de casos de uso del Paso 4, que es la parte "
             "lenta. El análisis de la cuenta y la redacción final hacelos vos: son "
             "decisiones que necesitan ver el expediente completo de una sola vez.\n\n"
-            f"Guarda el HTML en {ONEPAGER_DIR} (créala si no existe) con el nombre "
-            "onepager_<nombre-organizacion>.html que indica el skill.\n\n"
+            f"Guardá los HTML en {ONEPAGER_DIR} (créala si no existe), uno por "
+            "herramienta, con el nombre onepager_<nombre-organizacion>_<herramienta>"
+            ".html que indica el skill.\n\n"
+            "NO metas dos herramientas en la misma página. Cada una le habla a un "
+            "interlocutor distinto, y mezclarlas obliga a recortar hasta que una "
+            "queda en nada: el 8-oct-2026, con SANUT, se cayó Humand entero por "
+            "hacer eso, siendo el mejor encaje de esa cuenta. Si algo no entra en "
+            "una página, recortá sus casos o sus aplicaciones, nunca la "
+            "herramienta.\n\n"
             "ESTE DOCUMENTO LO LEE EL CLIENTE: es una pieza comercial que el "
             "vendedor le comparte, no un análisis interno. Hablale a él, y cerrá "
             "SIEMPRE invitando a una demo o a una llamada con el vendedor asignado, "
@@ -3580,7 +3588,7 @@ class Panel:
             self.log("El one-pager terminó con error. Revisá el detalle de arriba.")
             return
         self.var_onepager.set("")
-        self.log(f"One-pager listo. Está en {ONEPAGER_DIR}.")
+        self.log(f"One-pagers listos (uno por herramienta). Están en {ONEPAGER_DIR}.")
 
     def generar_deck_cliente(self):
         """Genera el deck de 9 slides de UNA cuenta, a partir del link que el responsable comercial

@@ -16,7 +16,12 @@ PASO 1: RESOLVER LA ORGANIZACION
 PASO 2: DATOS A REUNIR (solo lectura)
 Industria, pais, tamano, vendedor asignado, contactos clave con cargo, oportunidades abiertas y cerradas, productos ya contratados con GB, comentarios y tags recientes. Infiere el stack actual (Freshservice, Freshdesk, otro ITSM, herramientas de endpoints). Nunca inventes datos ni cifras.
 
-PASO 3: ELEGIR PRODUCTOS (maximo 2, o 3 si se justifica)
+PASO 3: ELEGIR PRODUCTOS (UNA PAGINA POR HERRAMIENTA)
+
+Genera un documento SEPARADO por cada herramienta que aplique a la cuenta, hasta 3. No metas dos productos en la misma pagina: cada one-pager va dirigido a un interlocutor distinto (NinjaOne y Atera le hablan al responsable de TI, Humand a RR. HH. o a operaciones), y mezclarlos obliga a recortar hasta que uno de los dos queda en nada. Es exactamente lo que paso el 8-oct-2026 con SANUT: para que entrara todo en una pagina se cayo Humand entero, pese a ser el mejor encaje de esa cuenta.
+
+Cada pagina se sostiene sola: su propia apertura, su propia oportunidad, sus propios casos y su propio cierre. Quien recibe una no necesita haber leido la otra.
+
 Elige por la brecha real de la cuenta, nunca por defecto. La brecha sale del expediente completo del Paso 2: assets ya contratados, mercado y pais, tipo y tamano de empresa, historico de deals ganados y perdidos con su motivo, farmings y sus etapas, y los comentarios y tags recientes. La recomendacion tiene que poder rastrearse hasta algo de ese expediente; si no, no la hagas.
 
 Si quien pide el documento ya fijo la herramienta, respetala, pero igual justificala con la brecha real. Si los datos de la cuenta no la sostienen, dilo en el informe final en vez de fabricar una necesidad que no se ve en el expediente.
@@ -74,12 +79,15 @@ No incluyas precios ni paquetes salvo que los hayas verificado por busqueda web 
 
 ESTILO Y SALIDA
 Usa la skill anthropic-skills:gb-advisors-design para colores, tipografia, logo y componentes. Tiene que verse como una pieza comercial de GB que el cliente abre sin contexto previo: logo arriba, el nombre de su organizacion visible, y el cierre con la invitacion destacado al pie.
-Una sola pagina tamano carta, HTML autocontenido e imprimible a PDF (@page, sin scroll). Si el contenido no cabe, recorta casos o aplicaciones antes de reducir la tipografia por debajo de lo legible; el cierre con la invitacion no se recorta nunca.
+Cada documento es una sola pagina tamano carta, HTML autocontenido e imprimible a PDF (@page, sin scroll). Si el contenido de UNA herramienta no cabe, recorta sus casos o sus aplicaciones antes de reducir la tipografia por debajo de lo legible; el cierre con la invitacion no se recorta nunca. Lo que NUNCA se hace para ganar espacio es eliminar una herramienta: cada una tiene su propia pagina, asi que no compiten entre si.
 Pon las URLs de las fuentes de los casos en un pie pequeno de la pagina: le dan credibilidad a las cifras y dejan claro que no son nuestras.
-Guardalo como onepager_<nombre-organizacion>.html en la carpeta de salida del proyecto, tomando las rutas de scripts/paths.py.
+Guarda cada uno como onepager_<nombre-organizacion>_<herramienta>.html en la carpeta de salida del proyecto, tomando las rutas de scripts/paths.py. Por ejemplo, onepager_sanut-dominicana-sa_ninjaone.html y onepager_sanut-dominicana-sa_humand.html.
 
 AL TERMINAR, informa en el chat (esto NO va en la pagina, es para quien va a mandar el documento):
-- Que herramienta elegiste y en que dato de la cuenta te apoyaste.
+- Que archivos generaste, uno por herramienta, con su ruta.
+- Que herramientas elegiste y en que dato de la cuenta te apoyaste en cada caso.
+- Si descartaste alguna herramienta, cual y por que: sirve para saber si el descarte fue por falta de encaje o por falta de datos.
+- A quien conviene mandar cada pagina (TI, RR. HH., operaciones), segun los contactos que encontraste en la cuenta.
 - Cuantos casos documentados encontraste por producto, con sus URLs, para que se puedan verificar antes de enviar.
 - Cuales aplicaciones son propuestas nuestras y no casos reales.
 - Que datos quedaron sin confirmar y por eso NO entraron en la pagina.
