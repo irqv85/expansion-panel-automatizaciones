@@ -85,6 +85,7 @@ Ejecutar con: python "Panel de Automatizaciones.py"  (o el .bat)
 import importlib.util
 import json
 import os
+import queue
 import re
 import subprocess
 import sys
@@ -2186,6 +2187,220 @@ class SofiaAIWindow(tk.Toplevel):
         self.focus_force()
 
 
+class FarmingProductoWindow(tk.Toplevel):
+    """Asigna el producto a los farmings del usuario que no lo tienen.
+
+    Dos pasos: se abre y LISTA (solo lectura), y "Añadir producto" ESCRIBE en
+    vTiger lo que se haya elegido en cada fila. Las filas sin producto elegido
+    no se tocan. La lista de productos es la del propio picklist de vTiger,
+    asi que no se puede escribir un valor que el CRM no conozca.
+
+    Todo lo que toca la red va en un hilo: listar son un par de segundos y
+    escribir es una llamada por farming, y con la ventana congelada pareceria
+    colgada."""
+
+    def __init__(self, panel):
+        super().__init__(panel.root)
+        self.panel = panel
+        self.title("Farming sin producto")
+        self.configure(bg=BG_APP)
+        self.transient(panel.root)
+        self.minsize(720, 420)
+        recordar_tamano(self, "farming_producto", "820x560")
+        self._filas = []          # [{id, nombre, var, widget}]
+        self._pares = []          # [(crudo, mostrar)]
+        self._mostrar_a_crudo = {}
+        self._ocupado = False
+        # Cola hilo -> pantalla: solo el hilo principal toca widgets.
+        self._cola = queue.Queue()
+        self._sondear()
+
+        pad = 20
+        tk.Label(self, text="Farmings asignados a ti sin producto", font=f_med(13),
+                 bg=BG_APP, fg=GBA_INK).pack(anchor="w", padx=pad, pady=(pad, 2))
+        self._estado = tk.Label(self, text="Cargando…", font=f_reg(9), bg=BG_APP,
+                                fg=GBA_700, justify="left", anchor="w")
+        self._estado.pack(fill="x", padx=pad, pady=(0, 10))
+
+        # Zona con scroll para las filas
+        zona = tk.Frame(self, bg=BG_APP)
+        zona.pack(fill="both", expand=True, padx=pad)
+        self._lienzo = tk.Canvas(zona, bg=CARD_BG, highlightthickness=0)
+        barra = ttk.Scrollbar(zona, orient="vertical", command=self._lienzo.yview)
+        self._cuerpo = tk.Frame(self._lienzo, bg=CARD_BG)
+        self._cuerpo.bind("<Configure>", lambda _e: self._lienzo.configure(
+            scrollregion=self._lienzo.bbox("all")))
+        self._ventana_id = self._lienzo.create_window((0, 0), window=self._cuerpo,
+                                                      anchor="nw")
+        self._lienzo.bind("<Configure>", lambda e: self._lienzo.itemconfigure(
+            self._ventana_id, width=e.width))
+        self._lienzo.configure(yscrollcommand=barra.set)
+        self._lienzo.pack(side="left", fill="both", expand=True)
+        barra.pack(side="right", fill="y")
+
+        # Relleno en bloque: poner el mismo producto en todas las filas vacias
+        fila_masa = tk.Frame(self, bg=BG_APP)
+        fila_masa.pack(fill="x", padx=pad, pady=(12, 0))
+        tk.Label(fila_masa, text="Mismo producto para las filas vacías:", font=f_reg(10),
+                 bg=BG_APP, fg=GBA_700).pack(side="left")
+        self._var_masa = tk.StringVar()
+        self._combo_masa = ttk.Combobox(fila_masa, textvariable=self._var_masa,
+                                        state="readonly", width=30)
+        self._combo_masa.pack(side="left", padx=(8, 8))
+        PillButton(fila_masa, "Rellenar", self._rellenar_vacias,
+                   "secondary", surface=BG_APP).pack(side="left")
+
+        fila_btn = tk.Frame(self, bg=BG_APP)
+        fila_btn.pack(fill="x", padx=pad, pady=(14, pad))
+        self._btn_listar = PillButton(fila_btn, "Volver a listar", self._cargar,
+                                      "secondary", surface=BG_APP)
+        self._btn_listar.pack(side="left")
+        PillButton(fila_btn, "Cerrar", self.destroy, "secondary",
+                   surface=BG_APP).pack(side="right")
+        self._btn_anadir = PillButton(fila_btn, "Añadir producto", self._confirmar,
+                                      "primary", surface=BG_APP)
+        self._btn_anadir.pack(side="right", padx=(0, 8))
+
+        self.after(100, self._cargar)
+
+    def _sondear(self):
+        """Ejecuta en el hilo principal lo que dejaron los hilos de red."""
+        try:
+            while True:
+                self._cola.get_nowait()()
+        except queue.Empty:
+            pass
+        if self.winfo_exists():
+            self.after(100, self._sondear)
+
+    # ---------------------------------------------------------------- listar
+    def _cargar(self):
+        if self._ocupado:
+            return
+        self._ocupado = True
+        self._estado.config(text="Consultando vTiger…")
+
+        def trabajo():
+            try:
+                import farming_producto as fp
+                import vtiger_api as vt
+                sesion, mi_id = vt.login()
+                pares = fp.productos_validos(sesion)
+                filas, total = fp.listar_sin_producto(sesion, mi_id, pares)
+                self._cola.put(lambda: self._pintar(pares, filas, total))
+            except Exception as exc:  # noqa: BLE001
+                self._cola.put(lambda: self._error(f"No se pudo consultar vTiger: {exc}"))
+        threading.Thread(target=trabajo, daemon=True).start()
+
+    def _error(self, texto):
+        self._ocupado = False
+        self._estado.config(text=texto)
+
+    def _pintar(self, pares, filas, total):
+        self._ocupado = False
+        self._pares = pares
+        self._mostrar_a_crudo = {mostrar: crudo for crudo, mostrar in pares}
+        valores = [""] + sorted({m for _, m in pares}, key=str.lower)
+        self._combo_masa.configure(values=valores[1:])
+
+        for hijo in self._cuerpo.winfo_children():
+            hijo.destroy()
+        self._filas = []
+
+        if not filas:
+            self._estado.config(
+                text=f"Tienes {total} farming(s) y todos tienen producto. No hay nada que añadir.")
+            return
+        sugeridas = sum(1 for f in filas if f["sugerido"])
+        self._estado.config(
+            text=f"{len(filas)} de {total} farming(s) sin producto. Elige el producto de cada "
+                 f"uno y pulsa «Añadir producto».\n"
+                 f"{sugeridas} traen sugerencia porque su nombre incluye el producto exacto; "
+                 f"el resto (CSM, ITSM) es una categoría y lo eliges tú.")
+
+        cabecera = tk.Frame(self._cuerpo, bg=CARD_BG)
+        cabecera.pack(fill="x", padx=12, pady=(10, 4))
+        tk.Label(cabecera, text="Farming", font=f_med(9), bg=CARD_BG, fg=GBA_700,
+                 width=46, anchor="w").pack(side="left")
+        tk.Label(cabecera, text="Etapa", font=f_med(9), bg=CARD_BG, fg=GBA_700,
+                 width=16, anchor="w").pack(side="left")
+        tk.Label(cabecera, text="Producto", font=f_med(9), bg=CARD_BG,
+                 fg=GBA_700, anchor="w").pack(side="left")
+
+        for f in filas:
+            fila = tk.Frame(self._cuerpo, bg=CARD_BG)
+            fila.pack(fill="x", padx=12, pady=2)
+            tk.Label(fila, text=f["nombre"], font=f_reg(10), bg=CARD_BG, fg=GBA_INK,
+                     width=46, anchor="w").pack(side="left")
+            tk.Label(fila, text=f["etapa"], font=f_reg(9), bg=CARD_BG, fg=GBA_700,
+                     width=16, anchor="w").pack(side="left")
+            var = tk.StringVar()
+            if f["sugerido"]:
+                var.set(next((m for c, m in pares if c == f["sugerido"]), ""))
+            combo = ttk.Combobox(fila, textvariable=var, values=valores,
+                                 state="readonly", width=30)
+            combo.pack(side="left")
+            self._filas.append({"id": f["id"], "nombre": f["nombre"], "var": var})
+
+    def _rellenar_vacias(self):
+        producto = self._var_masa.get()
+        if not producto:
+            return
+        for f in self._filas:
+            if not f["var"].get():
+                f["var"].set(producto)
+
+    # ---------------------------------------------------------------- añadir
+    def _confirmar(self):
+        if self._ocupado:
+            return
+        elegidas = [(f["id"], f["nombre"], self._mostrar_a_crudo[f["var"].get()])
+                    for f in self._filas if f["var"].get()]
+        if not elegidas:
+            self._estado.config(text="No elegiste ningún producto. Nada que añadir.")
+            return
+        from tkinter import messagebox
+        resumen = "\n".join(f"  {n[:44]}  →  {p}" for _i, n, p in elegidas[:8])
+        if len(elegidas) > 8:
+            resumen += f"\n  … y {len(elegidas) - 8} más"
+        if not messagebox.askyesno(
+                "Añadir producto en vTiger",
+                f"Voy a escribir el producto en {len(elegidas)} farming(s) de vTiger:\n\n"
+                f"{resumen}\n\nEsto modifica el CRM y no se deshace desde aquí. ¿Continuar?",
+                parent=self):
+            return
+        self._escribir(elegidas)
+
+    def _escribir(self, elegidas):
+        self._ocupado = True
+        self._estado.config(text=f"Escribiendo {len(elegidas)} farming(s) en vTiger…")
+
+        def trabajo():
+            try:
+                import farming_producto as fp
+                import vtiger_api as vt
+                sesion, _ = vt.login()
+                ok, fallos = fp.aplicar(sesion, elegidas, self._pares)
+                self._cola.put(lambda: self._terminado(ok, fallos))
+            except Exception as exc:  # noqa: BLE001
+                self._cola.put(lambda: self._error(f"No se pudo escribir en vTiger: {exc}"))
+        threading.Thread(target=trabajo, daemon=True).start()
+
+    def _terminado(self, ok, fallos):
+        self._ocupado = False
+        for nombre, producto in ok:
+            self.panel.log(f"Farming «{nombre}» → {producto}")
+        for nombre, motivo in fallos:
+            self.panel.log(f"NO se pudo: «{nombre}»: {motivo}")
+        texto = f"Listo: {len(ok)} farming(s) actualizados."
+        if fallos:
+            texto += f" {len(fallos)} fallaron (detalle en la actividad del panel)."
+        self.panel.log(texto)
+        self._cargar()  # vuelve a listar: lo que ya tiene producto sale de la lista
+        self.after(1500, lambda: self._estado.config(
+            text=self._estado.cget("text") + "\n" + texto))
+
+
 class VtigerAIWindow(tk.Toplevel):
     """Ventana 'vTiger Análisis': agrupa Calidad CRM, Métricas del
     trimestre, Análisis de Churn, GBS Deal Checker, GBS Deal Maker y GBS
@@ -2206,8 +2421,10 @@ class VtigerAIWindow(tk.Toplevel):
         # del otro", la version anterior de 2x2 con 4 tarjetas ya quedaba
         # bien -- al sumar las 2 tarjetas de GBS Maker se paso a 3 columnas
         # en vez de agregar una tercera fila, para seguir ancha y no alta.
-        self.minsize(980, 560)
-        recordar_tamano(self, "vtiger_ai", "1220x680")
+        # 680 de alto y no 560: con la fila de Farming debajo, a 560 las dos
+        # filas de arriba se quedaban sin espacio para sus botones.
+        self.minsize(980, 680)
+        recordar_tamano(self, "vtiger_ai", "1220x700")
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
 
         contenedor = tk.Frame(self, bg=BG_APP)
@@ -2230,6 +2447,14 @@ class VtigerAIWindow(tk.Toplevel):
         self.gbs_maker_card.grid(row=1, column=1, sticky="nsew", padx=(0, 16))
         self.gbs_org_maker_card = StatusCard(contenedor, "GBS Organization Maker")
         self.gbs_org_maker_card.grid(row=1, column=2, sticky="nsew")
+        # Farming (9-oct-2026): fila propia a lo ancho, porque es una accion de
+        # mantenimiento del CRM y no un reporte. Sin semaforo: se pide a mano y
+        # no hay nada que vigilar entre corridas.
+        self.farming_card = StatusCard(contenedor, "Farming")
+        self.farming_card.grid(row=2, column=0, columnspan=3, sticky="nsew", pady=(16, 0))
+        # minsize y no solo weight=0: las tarjetas no piden altura propia, la
+        # reparte la grilla, y una fila sin minsize se queda en 1 px.
+        contenedor.rowconfigure(2, weight=0, minsize=120)
 
         fila_botones = tk.Frame(self, bg=BG_APP)
         fila_botones.pack(anchor="e", padx=20, pady=20)
@@ -2788,6 +3013,15 @@ class Panel:
         self.btn_gbs_abrir = PillButton(gbs_fila_b, "Abrir carpeta",
                                         self.abrir_carpeta_gbs)
         self.btn_gbs_abrir.pack(side="left")
+
+        # --- Farming: asignar producto (9-oct-2026) ---
+        self.farming_card = self.vtiger_ai_window.farming_card
+        self.farming_card.set_status(
+            COLOR_GRAY,
+            "Lista tus farmings sin producto y asígnales el de vTiger en un paso.")
+        self.btn_farming = PillButton(self.farming_card.button_row, "Listar y añadir producto",
+                                      self.abrir_farming_producto, "primary")
+        self.btn_farming.pack(side="left")
 
         # --- GBS Deal Maker (28-ago-2026) ---
         # Redacta y arma en Word (Goals | Barriers | Solutions) el GBS de
@@ -3528,6 +3762,15 @@ class Panel:
         self.log("One-pager: " + ("propondrá " + ", ".join(elegidas) if elegidas
                                   else "elegirá la herramienta según la cuenta") +
                  f", con {config['agentes']} agente(s) en paralelo.")
+
+    def abrir_farming_producto(self):
+        """Abre la ventana de farmings sin producto. Una sola a la vez: si ya
+        esta abierta se trae al frente en vez de duplicarla."""
+        ventana = getattr(self, "_farming_win", None)
+        if ventana is not None and ventana.winfo_exists():
+            ventana.lift()
+            return
+        self._farming_win = FarmingProductoWindow(self)
 
     def generar_onepager(self):
         """Arma el one-pager de una organizacion a partir de una URL.
