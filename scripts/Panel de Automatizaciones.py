@@ -304,6 +304,15 @@ def check_sofia_status():
     return COLOR_RED, f"Sin enviar hace mas de {PENDING_STALE_HOURS}h ({len(pending)}): {nombres}"
 
 
+# Criterio de color, igual en todas las tarjetas (9-oct-2026). Antes el rojo se
+# usaba tambien para situaciones normales (exports que no son de hoy), asi que
+# Calidad CRM vivia en rojo y el color dejaba de avisar de nada:
+#
+#     gris      nunca se corrio. Neutro, no es un problema.
+#     amarillo  hay algo que hacer: se corrio pero no hoy, faltan insumos, o
+#               los exports estan viejos.
+#     verde     al dia.
+#     rojo      SOLO fallos de verdad, algo roto que hay que atender.
 def check_next_step_status():
     try:
         files = gen_ns.find_latest_files()
@@ -325,13 +334,19 @@ def check_next_step_status():
     color = COLOR_GREEN
 
     if missing:
-        color = COLOR_GRAY
+        # Amarillo y no gris: falta un insumo que hay que ir a buscar, no es
+        # que la tarjeta no se haya usado nunca.
+        color = COLOR_YELLOW
         reasons.append(f"Faltan {len(missing)} archivo(s) fuente de vTiger en Descargas")
 
     if stale:
-        color = COLOR_RED
+        # Que los exports no sean de hoy es rutina, no una averia: cualquier dia
+        # antes de bajarlos esta en este estado. Rojo aqui hacia que la tarjeta
+        # estuviera roja casi siempre (9-oct-2026).
+        if color != COLOR_RED:
+            color = COLOR_YELLOW
         nombres = ", ".join(p.name for _, p, _ in stale)
-        reasons.append(f"Reportes de vTiger desactualizados: {nombres}")
+        reasons.append(f"Bajá los reportes de hoy de vTiger: {nombres}")
 
     if pending:
         now = datetime.now()
@@ -339,8 +354,11 @@ def check_next_step_status():
         max_age = max(ages)
         nombres = ", ".join(p.name for p in pending)
         if max_age >= PENDING_STALE_HOURS:
+            # Esto si es un fallo: hay reportes generados que llevan horas sin
+            # salir, asi que alguien quedo sin su correo.
             color = COLOR_RED
-            reasons.append(f"Sin enviar hace mas de {PENDING_STALE_HOURS}h: {nombres}")
+            reasons.append(f"Generados y sin enviar hace mas de "
+                           f"{PENDING_STALE_HOURS}h: {nombres}")
         elif color == COLOR_GREEN:
             color = COLOR_YELLOW
             reasons.append(f"Nuevo(s) por enviar: {nombres}")
@@ -2596,14 +2614,18 @@ class Panel:
         # Vive dentro de VtigerAIWindow desde el 28-ago-2026, ya no directo
         # en la grilla del panel (ver bloque "vTiger Análisis" mas arriba).
         self.met_card = self.vtiger_ai_window.met_card
-        self.sel_met = QuarterStepper(self.met_card.button_row)
+        # Dos filas: en una sola, el selector mas los dos botones llegaban al
+        # borde de la tarjeta y "Abrir carpeta" se aplastaba hasta cortar el
+        # texto (9-oct-2026). Mismo patron que GBS Deal Checker.
+        met_fila_a, met_fila_b = filas_botones(self.met_card)
+        self.sel_met = QuarterStepper(met_fila_a)
         self.sel_met.pack(side="left", padx=(0, 10))
-        self.btn_met = PillButton(self.met_card.button_row, "Generar",
+        self.btn_met = PillButton(met_fila_a, "Generar",
                                   self.generar_metricas_trimestre, "primary")
         self.btn_met.pack(side="left")
-        self.btn_met_abrir = PillButton(self.met_card.button_row, "Abrir carpeta",
+        self.btn_met_abrir = PillButton(met_fila_b, "Abrir carpeta",
                                         self.abrir_carpeta_metricas)
-        self.btn_met_abrir.pack(side="left", padx=(8, 0))
+        self.btn_met_abrir.pack(side="left")
 
         # --- Forecast: mes actual/proximo, Upside y Commit ---
         # (Vacaciones ya no va aca -- ahora es el boton "Vacaciones" del Hero.)
@@ -2723,15 +2745,18 @@ class Panel:
         # bastante mas que los otros botones. Vive dentro de VtigerAIWindow
         # desde el 28-ago-2026, ya no directo en la grilla del panel.
         self.churn_card = self.vtiger_ai_window.churn_card
-        self.btn_churn = PillButton(self.churn_card.button_row, "Analizar churn",
+        # Dos filas por la misma razon que Metricas: los tres botones juntos no
+        # entraban y "Abrir carpeta" perdia 22 px de texto (9-oct-2026).
+        churn_fila_a, churn_fila_b = filas_botones(self.churn_card)
+        self.btn_churn = PillButton(churn_fila_a, "Analizar churn",
                                     self.ejecutar_analisis_churn, "primary")
         self.btn_churn.pack(side="left")
-        self.btn_churn_desplegar = PillButton(self.churn_card.button_row, "Desplegar churn",
+        self.btn_churn_desplegar = PillButton(churn_fila_a, "Desplegar churn",
                                               self.ejecutar_churn_desplegar)
         self.btn_churn_desplegar.pack(side="left", padx=(8, 0))
-        self.btn_churn_abrir = PillButton(self.churn_card.button_row, "Abrir carpeta",
+        self.btn_churn_abrir = PillButton(churn_fila_b, "Abrir carpeta",
                                           self.abrir_carpeta_churn)
-        self.btn_churn_abrir.pack(side="left", padx=(8, 0))
+        self.btn_churn_abrir.pack(side="left")
 
         # --- GBS Deal Checker (28-ago-2026) ---
         # "Chequear GBS" es de solo lectura hacia vTiger (no escribe nada,
