@@ -12,6 +12,7 @@ VTIGER_URL si la instancia no es la de siempre), igual que el resto del panel.
 import hashlib
 import json
 import os
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -28,15 +29,31 @@ class VtigerError(RuntimeError):
     pass
 
 
+# vTiger limita las llamadas por minuto y responde 429 cuando se pasa. Escribir N
+# farmings son N llamadas seguidas, asi que sin esperar y reintentar el lote se
+# cortaba a la mitad (9-oct-2026, medido al bajar datos de prueba).
+ESPERAS = (4, 10, 25, 60)
+
+
+def _abrir(pedir):
+    import time
+    for espera in ESPERAS + (None,):
+        try:
+            return json.loads(pedir().read())
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 or espera is None:
+                raise
+            time.sleep(espera)
+
+
 def _get(params):
-    r = urllib.request.urlopen(BASE + "?" + urllib.parse.urlencode(params), timeout=TIMEOUT)
-    return json.loads(r.read())
+    url = BASE + "?" + urllib.parse.urlencode(params)
+    return _abrir(lambda: urllib.request.urlopen(url, timeout=TIMEOUT))
 
 
 def _post(params):
     data = urllib.parse.urlencode(params).encode()
-    r = urllib.request.urlopen(BASE, data=data, timeout=TIMEOUT)
-    return json.loads(r.read())
+    return _abrir(lambda: urllib.request.urlopen(BASE, data=data, timeout=TIMEOUT))
 
 
 def login():

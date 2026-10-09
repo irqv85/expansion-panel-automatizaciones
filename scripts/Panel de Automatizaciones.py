@@ -2255,6 +2255,8 @@ class FarmingProductoWindow(tk.Toplevel):
         self._btn_listar = PillButton(fila_btn, "Volver a listar", self._cargar,
                                       "secondary", surface=BG_APP)
         self._btn_listar.pack(side="left")
+        PillButton(fila_btn, "Aceptar sugerencias", self._aceptar_sugerencias,
+                   "secondary", surface=BG_APP).pack(side="left", padx=(8, 0))
         PillButton(fila_btn, "Cerrar", self.destroy, "secondary",
                    surface=BG_APP).pack(side="right")
         self._btn_anadir = PillButton(fila_btn, "Añadir producto", self._confirmar,
@@ -2311,12 +2313,16 @@ class FarmingProductoWindow(tk.Toplevel):
             self._estado.config(
                 text=f"Tienes {total} farming(s) y todos tienen producto. No hay nada que añadir.")
             return
-        sugeridas = sum(1 for f in filas if f["sugerido"])
+        altas = sum(1 for f in filas if f["confianza"] == "alta")
+        bajas = sum(1 for f in filas if f["confianza"] == "baja")
+        sin_dato = len(filas) - altas - bajas
         self._estado.config(
-            text=f"{len(filas)} de {total} farming(s) sin producto. Elige el producto de cada "
-                 f"uno y pulsa «Añadir producto».\n"
-                 f"{sugeridas} traen sugerencia porque su nombre incluye el producto exacto; "
-                 f"el resto (CSM, ITSM) es una categoría y lo eliges tú.")
+            text=f"{len(filas)} de {total} farming(s) sin producto. Detectados solos: "
+                 f"{altas} con confianza alta (ya preseleccionados), {bajas} con sugerencia "
+                 f"de confianza baja, {sin_dato} sin evidencia.\n"
+                 f"«Añadir producto» escribe en vTiger lo que ves elegido. Las sugerencias "
+                 f"de confianza baja solo entran si pulsas «Aceptar sugerencias»: acertaron "
+                 f"entre 45 % y 74 % en las pruebas.")
 
         cabecera = tk.Frame(self._cuerpo, bg=CARD_BG)
         cabecera.pack(fill="x", padx=12, pady=(10, 4))
@@ -2325,6 +2331,8 @@ class FarmingProductoWindow(tk.Toplevel):
         tk.Label(cabecera, text="Etapa", font=f_med(9), bg=CARD_BG, fg=GBA_700,
                  width=16, anchor="w").pack(side="left")
         tk.Label(cabecera, text="Producto", font=f_med(9), bg=CARD_BG,
+                 fg=GBA_700, width=32, anchor="w").pack(side="left")
+        tk.Label(cabecera, text="Por qué", font=f_med(9), bg=CARD_BG,
                  fg=GBA_700, anchor="w").pack(side="left")
 
         for f in filas:
@@ -2335,12 +2343,34 @@ class FarmingProductoWindow(tk.Toplevel):
             tk.Label(fila, text=f["etapa"], font=f_reg(9), bg=CARD_BG, fg=GBA_700,
                      width=16, anchor="w").pack(side="left")
             var = tk.StringVar()
-            if f["sugerido"]:
-                var.set(next((m for c, m in pares if c == f["sugerido"]), ""))
+            sugerido = next((m for c, m in pares if c == f["sugerido"]), "") if f["sugerido"] else ""
+            # Solo la confianza ALTA entra preseleccionada: es la unica que supero
+            # el 96 % en las pruebas y por tanto la unica que se escribe con un clic.
+            if f["confianza"] == "alta":
+                var.set(sugerido)
             combo = ttk.Combobox(fila, textvariable=var, values=valores,
                                  state="readonly", width=30)
             combo.pack(side="left")
-            self._filas.append({"id": f["id"], "nombre": f["nombre"], "var": var})
+            if f["confianza"] == "baja":
+                texto_porque = f"sugerencia «{sugerido}»: {f['evidencia']}"
+                color_porque = GBA_700
+            elif f["confianza"] == "alta":
+                texto_porque = f["evidencia"]
+                color_porque = GBA_INK
+            else:
+                texto_porque = f["evidencia"]
+                color_porque = GBA_700
+            tk.Label(fila, text=texto_porque, font=f_reg(9), bg=CARD_BG, fg=color_porque,
+                     anchor="w", justify="left").pack(side="left", padx=(10, 0))
+            self._filas.append({"id": f["id"], "nombre": f["nombre"], "var": var,
+                                "sugerido": sugerido, "confianza": f["confianza"]})
+
+    def _aceptar_sugerencias(self):
+        """Rellena las filas de confianza baja con su sugerencia. Es la persona
+        quien decide asumir ese riesgo: acertaron entre 45 % y 74 % en las pruebas."""
+        for f in self._filas:
+            if not f["var"].get() and f["sugerido"]:
+                f["var"].set(f["sugerido"])
 
     def _rellenar_vacias(self):
         producto = self._var_masa.get()
@@ -2357,18 +2387,11 @@ class FarmingProductoWindow(tk.Toplevel):
         elegidas = [(f["id"], f["nombre"], self._mostrar_a_crudo[f["var"].get()])
                     for f in self._filas if f["var"].get()]
         if not elegidas:
-            self._estado.config(text="No elegiste ningún producto. Nada que añadir.")
+            self._estado.config(text="No hay ningún producto elegido. Nada que añadir.")
             return
-        from tkinter import messagebox
-        resumen = "\n".join(f"  {n[:44]}  →  {p}" for _i, n, p in elegidas[:8])
-        if len(elegidas) > 8:
-            resumen += f"\n  … y {len(elegidas) - 8} más"
-        if not messagebox.askyesno(
-                "Añadir producto en vTiger",
-                f"Voy a escribir el producto en {len(elegidas)} farming(s) de vTiger:\n\n"
-                f"{resumen}\n\nEsto modifica el CRM y no se deshace desde aquí. ¿Continuar?",
-                parent=self):
-            return
+        # Sin ventana de confirmacion: el clic ES la aprobacion, igual que en
+        # Notificar y Desplegar. Lo que se va a escribir esta a la vista en la
+        # lista, y la confianza baja solo entra si se acepto antes.
         self._escribir(elegidas)
 
     def _escribir(self, elegidas):
