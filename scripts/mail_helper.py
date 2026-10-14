@@ -109,19 +109,33 @@ def aplicar_cuerpo_con_firma(mail, body, html=False):
     import re
     cuerpo = _interior_del_body(str(body)) if html else _texto_a_html(body)
     mail.BodyFormat = OL_FORMAT_HTML
+    inspector = None
     try:
-        mail.GetInspector  # abrir el inspector hace que Outlook cargue la firma
+        inspector = mail.GetInspector  # abrir el inspector hace que Outlook cargue la firma
         base = mail.HTMLBody
     except Exception as exc:  # noqa: BLE001
         warnings.warn(f"No se pudo cargar la firma de Outlook ({exc}); el correo "
                       "saldra sin firma.")
         mail.HTMLBody = cuerpo
         return
-    m = re.search(r"<body[^>]*>", base, re.I)
-    if m:
-        mail.HTMLBody = base[:m.end()] + cuerpo + base[m.end():]
-    else:
-        mail.HTMLBody = cuerpo + base
+    try:
+        m = re.search(r"<body[^>]*>", base, re.I)
+        if m:
+            mail.HTMLBody = base[:m.end()] + cuerpo + base[m.end():]
+        else:
+            mail.HTMLBody = cuerpo + base
+    finally:
+        # IMPRESCINDIBLE: GetInspector deja un inspector abierto sobre el mensaje
+        # y Outlook se niega a enviar un item con un inspector vivo: Send() falla
+        # con com_error -2147024809 ("El parametro no es correcto"), aunque Save()
+        # funcione. Medido el 14-oct-2026: firma sin cerrar = falla; firma con el
+        # inspector cerrado = envia. Close(0) = olSave, conserva el cuerpo; con
+        # olDiscard (1) se perderia lo recien escrito.
+        try:
+            inspector.Close(0)
+        except Exception as exc:  # noqa: BLE001
+            warnings.warn(f"No se pudo cerrar el inspector de Outlook ({exc}); "
+                          "el envio podria fallar.")
 
 
 def _build_item(to, subject, body, attachment=None, cc=None, html=False):
