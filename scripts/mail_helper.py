@@ -77,6 +77,53 @@ def _joined(value):
     return "; ".join(str(v) for v in _addr_list(value) if v)
 
 
+def _texto_a_html(texto):
+    """Texto plano a HTML conservando saltos de linea y sangrias."""
+    import html as _html
+    t = _html.escape(str(texto))
+    t = t.replace("  ", "&nbsp; ").replace("\r\n", "\n").replace("\n", "<br>\n")
+    return f"<div>{t}</div>"
+
+
+def _interior_del_body(html_doc):
+    """Contenido de <body> si el texto es un documento HTML completo, o el texto
+    tal cual si ya es un fragmento. Insertar un <html> entero dentro del <body> de
+    la firma rompe el mensaje."""
+    import re
+    m = re.search(r"<body[^>]*>(.*)</body>", html_doc, re.I | re.S)
+    return m.group(1) if m else html_doc
+
+
+def aplicar_cuerpo_con_firma(mail, body, html=False):
+    """Pone `body` en el correo SIN perder la firma de Outlook.
+
+    `mail.Body = ...` reemplaza todo el contenido, firma incluida, y Outlook solo
+    carga la firma por defecto cuando se abre el inspector del mensaje. Aqui se
+    abre el inspector, se lee el HTML ya con la firma y el cuerpo se inserta justo
+    despues de <body>, o sea ANTES de la firma.
+
+    Siempre deja el correo en formato HTML: la firma lo es, y en texto plano se
+    perderian el formato y las imagenes. Si no se puede cargar la firma, el correo
+    sale igual sin ella y se avisa por warnings: un reporte que no llega es peor
+    que uno sin firma."""
+    import re
+    cuerpo = _interior_del_body(str(body)) if html else _texto_a_html(body)
+    mail.BodyFormat = OL_FORMAT_HTML
+    try:
+        mail.GetInspector  # abrir el inspector hace que Outlook cargue la firma
+        base = mail.HTMLBody
+    except Exception as exc:  # noqa: BLE001
+        warnings.warn(f"No se pudo cargar la firma de Outlook ({exc}); el correo "
+                      "saldra sin firma.")
+        mail.HTMLBody = cuerpo
+        return
+    m = re.search(r"<body[^>]*>", base, re.I)
+    if m:
+        mail.HTMLBody = base[:m.end()] + cuerpo + base[m.end():]
+    else:
+        mail.HTMLBody = cuerpo + base
+
+
 def _build_item(to, subject, body, attachment=None, cc=None, html=False):
     outlook = _outlook()
     mail = outlook.CreateItem(OL_MAIL_ITEM)
@@ -85,12 +132,9 @@ def _build_item(to, subject, body, attachment=None, cc=None, html=False):
         mail.CC = _joined(cc)
     mail.Subject = str(subject)
 
-    if html:
-        mail.BodyFormat = OL_FORMAT_HTML
-        mail.HTMLBody = str(body)
-    else:
-        mail.BodyFormat = OL_FORMAT_PLAIN
-        mail.Body = str(body)
+    # Cuerpo MAS la firma de Outlook (ver aplicar_cuerpo_con_firma): asignar
+    # mail.Body directamente la borraba y los correos salian sin firma.
+    aplicar_cuerpo_con_firma(mail, body, html)
 
     if attachment:
         for ruta in _addr_list(attachment):

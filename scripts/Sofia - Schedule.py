@@ -427,7 +427,9 @@ def send_file_only(outlook_app, seller, filepath, company_name, dry_run=False):
     mail.To = seller["email"]
     mail.CC = CC_EMAIL
     mail.Subject = subject
-    mail.Body = body
+    # Con la firma de Outlook: asignar mail.Body la borraba (14-oct-2026).
+    import mail_helper
+    mail_helper.aplicar_cuerpo_con_firma(mail, body)
     mail.Attachments.Add(str(filepath))
     mail.Send()
     logging.info(f"Enviado '{filepath.name}' a {seller['name']} ({seller['email']}), CC {CC_EMAIL}")
