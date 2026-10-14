@@ -54,7 +54,7 @@ ALERT_EXPLANATIONS = {
     "Next Step vencido": "El <b>Next Step</b> está vencido. Actualízalo con la próxima acción y fecha.",
     "Next Step a corregir": (
         "El <b>Next Step</b> no sigue el formato acordado: <b>Acción; MM/DD/AAAA</b>. "
-        "La acción va primero, separada por punto y coma, y el año con cuatro cifras "
+        "La acción va primero, separada de la fecha por punto y coma "
         "(ej: <b>Call; 10/15/2026; validar presupuesto</b>). Después de la fecha puedes "
         "agregar el detalle que quieras."
     ),
@@ -209,10 +209,13 @@ WRITTEN_DATE_RE = re.compile(
 def formato_next_step_ok(value):
     """True si el Next Step sigue el procedimiento: "Accion; MM/DD/AAAA".
 
-    Tres cosas, todas del procedimiento acordado:
+    Dos cosas, las que de verdad senalan un problema:
       - la accion va ANTES de la fecha,
-      - separadas por punto y coma,
-      - y el ano con cuatro cifras.
+      - separadas por punto y coma.
+
+    El ano puede tener dos o cuatro cifras: "10/19/26" es inequivoco en MM/DD/AA y
+    parse_next_step ya lo lee. Exigir cuatro marcaba 13 de 27 registros que estaban
+    bien (14-oct-2026), solo por esa razon.
 
     Lo que venga despues de la fecha es libre: el detalle del seguimiento no
     estorba. Solo tiene sentido llamarla cuando ya se sabe que hay fecha.
@@ -226,7 +229,7 @@ def formato_next_step_ok(value):
         return False  # la fecha va delante de la accion
     if not antes.endswith(";"):
         return False  # separador equivocado (dos puntos, guion, parentesis...)
-    return len(m.group(3)) == 4
+    return len(m.group(3)) in (2, 4)
 
 
 def parse_next_step(value):
@@ -853,8 +856,8 @@ def build_vendor_html(owner, secciones, generated_on):
     {bloque_farming}
     <div class="nota">
       <b>Cómo se escribe el Next Step:</b> <code>Acción; MM/DD/AAAA</code> y, si hace
-      falta, el detalle después de la fecha. La acción va primero, separada por punto
-      y coma, y el año con cuatro cifras.<br>
+      falta, el detalle después de la fecha. La acción va primero, separada de la
+      fecha por punto y coma.<br>
       Ejemplo: <code>Call; 10/15/2026; validar presupuesto con el CFO</code>
     </div>
     <div class="footer">Generado automáticamente a partir de DIQ, FAR y Farming sin Producto ({date_str}). Cualquier duda, escríbeme.</div>
