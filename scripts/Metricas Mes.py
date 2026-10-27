@@ -4,21 +4,30 @@ Reporte ejecutivo del departamento Mid/SMB, para compartir hacia arriba
 ejecutarlo (QTD).
 
 Lee los reportes que ya descargas (DIQ, ChurnAssets, OA) y produce un Excel
-con el periodo, comparado contra el trimestre anterior completo, la meta
-trimestral y los OKR anuales 2026.
+con el periodo, comparado contra el trimestre anterior completo y contra la
+unica meta definida hasta ahora: la de suscripciones de ServiceNow FY26.
 
-Reglas financieras (OKR 2026 GB Advisors):
+Metas (27-10-2026): Iran NO tiene metas definidas, salvo la de ServiceNow.
+Hasta esa fecha el reporte traia las del OKR viejo de Freshworks Mid + Digital
+(KR1 2.070.000, Payment Frequency 300.000, servicios 150.000, logos 20), que ya
+no corresponden a Expansion Partners y se quitaron. Cuando haya mas metas, se
+agregan junto a TARGET_SERVICENOW_*.
+
+Reglas financieras (GB Advisors):
   - ARR: los servicios (ProfessionalServices / SSI add on) YA son valor anual,
     asi que ARR = monto. Todo lo demas es MRR mensual: ARR = monto x 12.
   - Categoria, segun el campo New/Renew/ProServ:
     "New" = NEW LOGO · "New-Add-On" y "New-Cross-Sell" = EXPANSION (caen sobre
     cuentas que ya son clientes) · "Payment Frequency" = su propia categoria,
-    porque es el KR2 y sumarlo a Expansion contaria el mismo ARR dos veces ·
-    ProfessionalServices, "SSI add on" y "Renew SSI" = SERVICES (el KR3 dice
-    "incl. renewals") · "Renewal" de licencia = RENEWAL, es del equipo de
-    Renewals.
+    porque sumarlo a Expansion contaria el mismo ARR dos veces ·
+    ProfessionalServices, "SSI add on" y "Renew SSI" = SERVICES (incluye
+    renovaciones de servicio) · "Renewal" de licencia = RENEWAL, es del equipo
+    de Renewals.
   - Ganado = Closed Won + PO Invoiced. Perdido = Closed Lost. Abierto = resto.
-  - Target de pipeline dinamico: (target de ventas - ARR ganado YTD) / 39%.
+  - Suscripciones de ServiceNow (meta FY26): deals NEW LOGO o EXPANSION cuyo
+    nombre dice ServiceNow o SN, en ARR (monto x 12) y SIN renovaciones. Asi
+    cuadra con la diapositiva de ServiceNow: el Q3 de 2026 da 67.716 (el add-on
+    SN FSM de Banreservas, 5.643 x 12).
 
 Uso:
   python "Metricas Mes.py"                    Trimestre en curso al dia de hoy
@@ -28,6 +37,7 @@ Uso:
 import argparse
 import calendar
 import importlib.util
+import re
 import sys
 import traceback
 from datetime import date, datetime
@@ -47,17 +57,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 # equivocada el reporte no falla: sale vacio, que es peor (5-oct-2026).
 from equipo import NOMBRE_PANEL, TEAM_OWNERS as EQUIPO
 
-# ---- OKR 2026: metas del equipo, ver equipo.json ----
-# Metas tal como estan en la hoja de OKR del equipo.
-TARGET_SALES_ARR = 2_070_000   # KR1 Total FW Mid + Digital ARR (NB + Expansion)
-TARGET_PF_ARR = 300_000        # KR2 Reseller Conversion: Payment Frequency
-TARGET_SERVICES_ARR = 150_000  # KR3 Professional Services Revenue (incl. renewals)
-TARGET_LOGOS = 20              # KR4 New partner logos (HALO + Humand + Intercom)
-# Contexto del OKR (dato de la hoja, no se calcula de los reportes)
-RESELLER_UNIVERSE = 66         # orgs Mfr Monthly 51-500 empleados
-CONVERTIBLE_ARR = 955_753
-CONVERTIBLE_TARGET = 382_301   # 40% del ARR convertible
-CONV_RATE = 0.39
+# ---- Metas ----
+# Unica meta definida (diapositiva "FY26 target" de ServiceNow, 27-10-2026):
+# suscripciones, 250.000 por trimestre y 1.000.000 en el ano, en ARR y sin
+# renovaciones. Iran dijo que para lo logrado manda lo que hay en vTiger, no la
+# diapositiva (el Q1 de ella decia 50.000 y vTiger tiene 25.299,96).
+TARGET_SERVICENOW_Q = 250_000
+TARGET_SERVICENOW_ANIO = 4 * TARGET_SERVICENOW_Q
+PATRON_SERVICENOW = re.compile(r"service ?now|\bsn\b", re.IGNORECASE)
 
 TIPOS_PROSERV = {"professionalservices gb", "professionalservices vendor", "ssi add on"}
 TIPOS_RENEWAL = {"renewal"}
@@ -246,6 +253,23 @@ def tasa(a, b):
     return (a / b) if b else None
 
 
+def es_suscripcion_servicenow(d):
+    """Suscripcion de ServiceNow para la meta FY26: logo nuevo o expansion, con
+    ServiceNow o SN en el nombre del deal. Sin renovaciones, servicios ni
+    payment frequency."""
+    return d["categoria"] in ("NEW LOGO", "EXPANSION") and bool(PATRON_SERVICENOW.search(d["nombre"]))
+
+
+def servicenow_por_trimestre(deals, anio):
+    """{1: ARR, 2: ..., 3: ..., 4: ...} de suscripciones de ServiceNow ganadas
+    en el ano, por trimestre de la fecha de cierre."""
+    por_q = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
+    for d in deals:
+        if es_suscripcion_servicenow(d) and d["ecd"] and d["ecd"].year == anio:
+            por_q[trimestre_de(d["ecd"])] += d["arr"]
+    return por_q
+
+
 # ---------- estilo ----------
 
 def celda(ws, fila, col, valor, *, bold=False, size=10, color=INK, fill=None,
@@ -361,115 +385,119 @@ def hoja_resumen(wb, ctx):
         f += 1
     f += 1
 
-    # --- C. Avance del trimestre vs meta trimestral ---
-    banda(ws, f, "C. AVANCE DEL TRIMESTRE VS META TRIMESTRAL", ncols, C_SMB)
+    # --- C. Avance del periodo vs meta de ServiceNow ---
+    # Unica meta definida (27-10-2026). Antes eran KR1 a KR3 del OKR viejo de
+    # Freshworks Mid + Digital, que no corresponden a Expansion Partners.
+    es_mes = ctx["es_mes"]
+    banda(ws, f, "C. AVANCE DEL MES VS META DE SERVICENOW" if es_mes
+          else "C. AVANCE DEL TRIMESTRE VS META DE SERVICENOW", ncols, C_SMB)
     f += 1
-    for i, t in enumerate(["Metrica", "Ganado en el periodo", "Meta del trimestre",
+    for i, t in enumerate(["Metrica", "Ganado en el periodo",
+                           "Meta del mes (1/3 del trimestre)" if es_mes else "Meta del trimestre",
                            "% de la meta", "Ritmo esperado a hoy", "Estado"], start=1):
         celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True)
     f += 1
 
-    g_per = ctx["mes_ganado"]
-    nb_per = suma(por_categoria(g_per, "NEW LOGO"))
-    exp_per = suma(por_categoria(g_per, "EXPANSION"))
-    serv_per = suma(por_categoria(g_per, "SERVICES"))
-    avance = ctx["avance_periodo"]
-
-    pf_per = suma(por_categoria(g_per, "PAYMENT FREQUENCY"))
-    filas_q = [
-        ("KR1 · FW Mid + Digital ARR (NB + Expansion)", nb_per + exp_per, TARGET_SALES_ARR / 4),
-        ("KR2 · Reseller conversion: Payment Frequency", pf_per, TARGET_PF_ARR / 4),
-        ("KR3 · Professional Services (incl. renewals)", serv_per, TARGET_SERVICES_ARR / 4),
-    ]
-    for etiqueta, real, meta_q in filas_q:
-        pct = tasa(real, meta_q)
-        esperado = meta_q * avance
-        celda(ws, f, 1, etiqueta)
-        celda(ws, f, 2, real, fmt=MONEY, bold=True)
-        c = celda(ws, f, 3, meta_q, fmt=MONEY)
-        c.comment = Comment("Meta anual del OKR dividida entre 4 trimestres.", "Metricas Mes")
-        cp = celda(ws, f, 4, f"=B{f}/C{f}", fmt=PCT, bold=True)
-        cp.fill = PatternFill("solid", fgColor=color_semaforo(pct))
-        cp.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
-        c2 = celda(ws, f, 5, esperado, fmt=MONEY, color="5B5F6B")
-        c2.comment = Comment(f"Meta del trimestre x {avance:.0%} del trimestre transcurrido "
-                             f"({ctx['dias_corridos']} de {ctx['dias_periodo']} dias).",
-                             "Metricas Mes")
-        celda(ws, f, 6, "Sobre ritmo" if real >= esperado else "Bajo el ritmo esperado", size=9,
-              color=("1F5C2E" if real >= esperado else C_RED), wrap=True)
-        f += 1
-    celda(ws, f, 1, f"Transcurrido {avance:.0%} del trimestre ({ctx['dias_corridos']} de "
-                    f"{ctx['dias_periodo']} dias).", size=9, color="5B5F6B", wrap=True)
+    avance = ctx["avance_meta"]
+    meta_per = TARGET_SERVICENOW_Q / 3 if es_mes else TARGET_SERVICENOW_Q
+    real = suma([d for d in ctx["mes_ganado"] if es_suscripcion_servicenow(d)])
+    pct = tasa(real, meta_per)
+    esperado = meta_per * avance
+    celda(ws, f, 1, "ServiceNow · Suscripciones")
+    celda(ws, f, 2, real, fmt=MONEY, bold=True)
+    c = celda(ws, f, 3, meta_per, fmt=MONEY)
+    c.comment = Comment("Meta FY26 de ServiceNow: 250.000 por trimestre, 1.000.000 en el ano. "
+                        "Logrado = logos nuevos y expansion con ServiceNow o SN en el nombre, "
+                        "en ARR, sin renovaciones.", "Metricas Mes")
+    cp = celda(ws, f, 4, f"=B{f}/C{f}", fmt=PCT, bold=True)
+    cp.fill = PatternFill("solid", fgColor=color_semaforo(pct))
+    cp.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
+    c2 = celda(ws, f, 5, esperado, fmt=MONEY, color="5B5F6B")
+    c2.comment = Comment(f"Meta x {avance:.0%} del periodo transcurrido "
+                         f"({ctx['dias_corridos_meta']} de {ctx['dias_meta']} dias).", "Metricas Mes")
+    if avance >= 1:
+        # Periodo ya cerrado: no hay "ritmo", se cumplio o no.
+        estado_c = "Meta cumplida" if real >= meta_per else "Meta no cumplida"
+    else:
+        estado_c = "Sobre ritmo" if real >= esperado else "Bajo el ritmo esperado"
+    celda(ws, f, 6, estado_c, size=9, color=("1F5C2E" if real >= esperado else C_RED), wrap=True)
+    f += 1
+    celda(ws, f, 1, f"Transcurrido {avance:.0%} del {'mes' if es_mes else 'trimestre'} "
+                    f"({ctx['dias_corridos_meta']} de {ctx['dias_meta']} dias). Solo ServiceNow "
+                    f"tiene meta definida; los demas fabricantes y los servicios todavia no.",
+          size=9, color="5B5F6B", wrap=True)
     ws.merge_cells(start_row=f, start_column=1, end_row=f, end_column=ncols)
     f += 2
 
-    # --- D. Avance vs OKR 2026 ---
-    banda(ws, f, "D. AVANCE ANUAL VS OKR 2026 (acumulado del año)", ncols, C_SMB)
+    # --- D. Avance anual de ServiceNow, por trimestre ---
+    # Misma forma que la diapositiva "FY26 target: total and by quarter" de
+    # ServiceNow. Lo logrado sale de vTiger (decision de Iran, 27-10-2026).
+    anio_meta = ctx["anio_ref"]
+    banda(ws, f, f"D. SERVICENOW FY{str(anio_meta)[-2:]}: META Y LOGRADO POR TRIMESTRE (suscripciones, ARR)",
+          ncols, C_SMB)
     f += 1
-    for i, t in enumerate(["Metrica", "YTD real", "Target 2026", "% avance",
-                           "Ritmo esperado", "Estado"], start=1):
+    for i, t in enumerate(["Trimestre", "Meta", "Logrado (ARR)", "% de la meta",
+                           "Ritmo esperado a hoy", "Estado"], start=1):
         celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True)
     f += 1
 
-    ytd = ctx["ytd_ganado"]
-    nb_ytd = suma(por_categoria(ytd, "NEW LOGO"))
-    exp_ytd = suma(por_categoria(ytd, "EXPANSION"))
-    serv_ytd = suma(por_categoria(ytd, "SERVICES"))
-    ventas_ytd = nb_ytd + exp_ytd
-    ritmo = ctx["meses_transcurridos"] / 12
-
-    pf_ytd = suma(por_categoria(ytd, "PAYMENT FREQUENCY"))
-    filas_okr = [
-        ("KR1 · FW Mid + Digital ARR (NB + Expansion)", ventas_ytd, TARGET_SALES_ARR),
-        ("KR2 · Reseller conversion: Payment Frequency", pf_ytd, TARGET_PF_ARR),
-        ("KR3 · Professional Services (incl. renewals)", serv_ytd, TARGET_SERVICES_ARR),
-    ]
-    for etiqueta, real, target in filas_okr:
-        pct = tasa(real, target)
-        esperado = target * ritmo
-        celda(ws, f, 1, etiqueta)
-        celda(ws, f, 2, real, fmt=MONEY, bold=True)
-        celda(ws, f, 3, target, fmt=MONEY)
-        c = celda(ws, f, 4, f"=B{f}/C{f}", fmt=PCT, bold=True)
-        c.fill = PatternFill("solid", fgColor=color_semaforo(pct))
-        c.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
-        celda(ws, f, 5, esperado, fmt=MONEY, color="5B5F6B")
-        estado = "Sobre ritmo" if real >= esperado else "Bajo el ritmo esperado"
-        celda(ws, f, 6, estado, size=9,
-              color=("1F5C2E" if real >= esperado else C_RED), wrap=True)
+    por_q = servicenow_por_trimestre(ctx["ytd_ganado"], anio_meta)
+    ref = ctx["fecha_ref"]
+    if ref.year > anio_meta:
+        q_cerrados, q_curso = 4, None
+    elif ref.year < anio_meta:
+        q_cerrados, q_curso = 0, None
+    else:
+        q_ref = trimestre_de(ref)
+        if ref >= rango_trimestre(anio_meta, q_ref)[1]:
+            q_cerrados, q_curso = q_ref, None      # el trimestre ya termino
+        else:
+            q_cerrados, q_curso = q_ref - 1, q_ref
+    for q in (1, 2, 3, 4):
+        real_q = por_q[q]
+        pct = tasa(real_q, TARGET_SERVICENOW_Q)
+        celda(ws, f, 1, f"Q{q} {anio_meta}")
+        celda(ws, f, 2, TARGET_SERVICENOW_Q, fmt=MONEY)
+        celda(ws, f, 3, real_q, fmt=MONEY, bold=True)
+        cp = celda(ws, f, 4, f"=C{f}/B{f}", fmt=PCT, bold=True)
+        if q <= q_cerrados or q == q_curso:
+            cp.fill = PatternFill("solid", fgColor=color_semaforo(pct))
+            cp.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
+        if q == q_curso:
+            esperado_q = TARGET_SERVICENOW_Q * ctx["avance_trimestre_actual"]
+            celda(ws, f, 5, esperado_q, fmt=MONEY, color="5B5F6B")
+            celda(ws, f, 6, "En curso: sobre ritmo" if real_q >= esperado_q else "En curso: bajo el ritmo esperado",
+                  size=9, color=("1F5C2E" if real_q >= esperado_q else C_RED), wrap=True)
+        else:
+            celda(ws, f, 5, None)
+            if q <= q_cerrados:
+                cumplida = real_q >= TARGET_SERVICENOW_Q
+                celda(ws, f, 6, "Meta cumplida" if cumplida else "Meta no cumplida", size=9,
+                      color=("1F5C2E" if cumplida else C_RED), wrap=True)
+            else:
+                celda(ws, f, 6, "Por llegar", size=9, color="5B5F6B", wrap=True)
         f += 1
-
-    # KR4: los reportes locales no traen el partner del deal, asi que no se
-    # puede contar logos sin inventar el dato.
-    celda(ws, f, 1, "KR4 · New partner logos (HALO + Humand + Intercom)", color="5B5F6B")
-    c = celda(ws, f, 2, "—", color="5B5F6B", fill=C_GREY, align="center")
-    c.comment = Comment("El DIQ no trae el partner ni el producto del deal, de modo que no se "
-                        "puede contar logos con los reportes actuales. Haria falta agregar "
-                        "Products Manufacturer / Product Name al reporte.", "Metricas Mes")
-    celda(ws, f, 3, TARGET_LOGOS, color="5B5F6B", fill=C_GREY, align="center")
-    celda(ws, f, 4, "sin medir", size=9, color="5B5F6B", fill=C_GREY, wrap=True)
-    celda(ws, f, 5, None, fill=C_GREY)
-    celda(ws, f, 6, "Falta el campo de partner en el reporte", size=9, color="5B5F6B", wrap=True)
+    total_real = sum(por_q.values())
+    ritmo = ctx["meses_transcurridos"] / 12
+    celda(ws, f, 1, f"FY{str(anio_meta)[-2:]} total", bold=True, fill="EFF3F8")
+    celda(ws, f, 2, TARGET_SERVICENOW_ANIO, fmt=MONEY, bold=True, fill="EFF3F8")
+    celda(ws, f, 3, total_real, fmt=MONEY, bold=True, fill="EFF3F8")
+    cp = celda(ws, f, 4, f"=C{f}/B{f}", fmt=PCT, bold=True)
+    cp.fill = PatternFill("solid", fgColor=color_semaforo(tasa(total_real, TARGET_SERVICENOW_ANIO)))
+    cp.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
+    celda(ws, f, 5, TARGET_SERVICENOW_ANIO * ritmo, fmt=MONEY, color="5B5F6B", fill="EFF3F8")
+    celda(ws, f, 6, "Sobre ritmo" if total_real >= TARGET_SERVICENOW_ANIO * ritmo else "Bajo el ritmo esperado",
+          size=9, color=("1F5C2E" if total_real >= TARGET_SERVICENOW_ANIO * ritmo else C_RED), wrap=True, fill="EFF3F8")
     f += 1
 
-    # Pipeline con target dinamico
-    gap = max(TARGET_SALES_ARR - ventas_ytd, 0)
-    pipe_target = round(gap / CONV_RATE) if gap > 0 else 0
-    pipe_real = suma(ctx["abiertos"])
-    pct_pipe = tasa(pipe_real, pipe_target) if pipe_target else None
-    celda(ws, f, 1, "Pipeline ARR activo")
-    celda(ws, f, 2, pipe_real, fmt=MONEY, bold=True)
-    c = celda(ws, f, 3, pipe_target, fmt=MONEY)
-    c.comment = Comment("Calculado dinamicamente: (target de ventas - ARR ganado YTD) / 39% "
-                        "de conversion.", "Metricas Mes")
-    if pipe_target:
-        cp = celda(ws, f, 4, f"=B{f}/C{f}", fmt=PCT, bold=True)
-        cp.fill = PatternFill("solid", fgColor=color_semaforo(pct_pipe))
-        cp.font = Font(name=FONT_NAME, size=10, bold=True, color="FFFFFF")
-    else:
-        celda(ws, f, 4, "Target alcanzado", size=9, fill=C_GREEN, color="FFFFFF", wrap=True)
+    pipe_sn = suma([d for d in ctx["abiertos"] if es_suscripcion_servicenow(d)])
+    n_sn = len([d for d in ctx["abiertos"] if es_suscripcion_servicenow(d)])
+    celda(ws, f, 1, "Pipeline de ServiceNow abierto")
+    celda(ws, f, 2, pipe_sn, fmt=MONEY, bold=True)
+    celda(ws, f, 3, f"{n_sn} deals", size=9, color="5B5F6B")
+    celda(ws, f, 4, None)
     celda(ws, f, 5, None)
-    celda(ws, f, 6, f"Cobertura necesaria: {gap / CONV_RATE / 1000:,.0f}K" if gap else "—",
+    celda(ws, f, 6, f"Falta para la meta anual: ${max(TARGET_SERVICENOW_ANIO - total_real, 0):,.0f}",
           size=9, color="5B5F6B", wrap=True)
     f += 2
 
@@ -644,17 +672,19 @@ def hoja_deals(wb, ctx):
 
 
 def hoja_okr_anual(wb, ctx):
-    """Detalle deal por deal de la seccion D (Avance Anual vs OKR): de donde
-    sale cada monto que compone el YTD, incluyendo lo aportado por vendedores
-    que ya no estan en el equipo (Legacy)."""
-    ws = wb.create_sheet("Detalle OKR Anual")
+    """Detalle deal por deal del acumulado del ano (YTD): de donde sale cada
+    monto, incluyendo lo aportado por vendedores que ya no estan en el equipo
+    (Legacy). Se llamaba "Detalle OKR Anual"; desde el 27-10-2026 ya no hay OKR
+    y se renombro. Los deals de suscripcion de ServiceNow (los que cuentan para
+    la meta de la seccion D) van resaltados."""
+    ws = wb.create_sheet("Detalle Anual")
     ncols = 10
-    celda(ws, 1, 1, f"Detalle del acumulado del año (YTD) para el OKR 2026, al "
+    celda(ws, 1, 1, f"Detalle del acumulado del año (YTD), al "
                     f"{ctx['hasta']:%d/%m/%Y}", bold=True, size=14, color=C_DARK, borde=False)
-    celda(ws, 2, 1, "Es el mismo total de la seccion D del Resumen Ejecutivo, deal por deal. "
-                    "Incluye al equipo actual y a vendedores que ya no estan en GB Advisors "
-                    "(columna Fuente = Legacy), sumados aparte porque su ARR ya cuenta para "
-                    "la meta anual de la empresa.",
+    celda(ws, 2, 1, "Todo lo ganado en el año, deal por deal. Los resaltados en azul son las "
+                    "suscripciones de ServiceNow que cuentan para la meta de la seccion D del "
+                    "Resumen Ejecutivo. Incluye al equipo actual y a vendedores que ya no estan "
+                    "en GB Advisors (columna Fuente = Legacy), sumados aparte.",
           size=9, color="5B5F6B", wrap=True, borde=False)
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=ncols)
     ws.row_dimensions[2].height = 30
@@ -667,12 +697,14 @@ def hoja_okr_anual(wb, ctx):
     legacy = [d for d in ytd if d["fuente"] == "Legacy"]
 
     f = 4
-    banda(ws, f, "Resumen (coincide con la seccion D del Resumen Ejecutivo)", ncols, C_SMB)
+    banda(ws, f, "Resumen (el de ServiceNow coincide con la seccion D del Resumen Ejecutivo)", ncols, C_SMB)
     f += 1
+    sn = suma([d for d in ytd if es_suscripcion_servicenow(d)])
     for etiqueta, valor, negrita in [
-        ("KR1 · FW Mid + Digital ARR (NB + Expansion)", nb + exp, True),
-        ("KR2 · Reseller conversion: Payment Frequency", pf, True),
-        ("KR3 · Professional Services (incl. renewals)", serv, True),
+        ("ServiceNow · Suscripciones (logos nuevos + expansion, sin renovaciones)", sn, True),
+        ("Logos nuevos + expansion, todos los fabricantes", nb + exp, True),
+        ("Servicios (incl. renovaciones de servicio)", serv, True),
+        ("Payment Frequency", pf, True),
         ("De lo anterior, aportado por vendedores Legacy", suma(legacy), False),
     ]:
         celda(ws, f, 1, etiqueta, bold=negrita)
@@ -693,7 +725,8 @@ def hoja_okr_anual(wb, ctx):
         celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True)
     f += 1
     for d in sorted(ytd, key=lambda x: (x["fuente"] == "Legacy", -x["arr"])):
-        fill = "FCE9E9" if d["fuente"] == "Legacy" else None
+        fill = ("FCE9E9" if d["fuente"] == "Legacy"
+                else "DCE9F7" if es_suscripcion_servicenow(d) else None)
         for i, v in enumerate([d["deal_id"], d["nombre"], d["org"], d["vendedor"],
                                d["fuente"], d["categoria"], d["tipo"],
                                f"{d['ecd']:%d/%m/%Y}" if d["ecd"] else "",
@@ -799,40 +832,28 @@ def construir_insights(ctx):
     nb = suma(por_categoria(g, "NEW LOGO"))
     ventas_mes = exp + nb
     if ventas_mes:
-        out.append(f"De los ${ventas_mes:,.0f} del KR1 en el periodo, {exp / ventas_mes:.0%} "
-                   f"vino de expansion sobre la base instalada y {nb / ventas_mes:.0%} de logos "
-                   f"nuevos.")
+        out.append(f"De los ${ventas_mes:,.0f} de logos nuevos y expansion del periodo, "
+                   f"{exp / ventas_mes:.0%} vino de expansion sobre la base instalada y "
+                   f"{nb / ventas_mes:.0%} de logos nuevos.")
     if nb == 0:
-        out.append("ALERTA: no se ha cerrado ningun logo nuevo en el periodo; todo el KR1 "
+        out.append("ALERTA: no se ha cerrado ningun logo nuevo en el periodo; todo lo ganado "
                    "salio de la base instalada.")
 
-    meta_q = TARGET_SALES_ARR / 4
-    ventas_per = exp + nb
-    esperado_q = meta_q * ctx["avance_periodo"]
-    out.append(f"Contra la meta del trimestre (${meta_q:,.0f}), el equipo va en "
-               f"${ventas_per:,.0f} ({ventas_per / meta_q:.0%}) con "
-               f"{ctx['avance_periodo']:.0%} del trimestre transcurrido; el ritmo esperado a hoy "
-               f"seria ${esperado_q:,.0f}.")
+    # ServiceNow: la unica meta definida (27-10-2026).
+    es_mes = ctx["es_mes"]
+    meta_per = TARGET_SERVICENOW_Q / 3 if es_mes else TARGET_SERVICENOW_Q
+    sn_per = suma([d for d in g if es_suscripcion_servicenow(d)])
+    esperado_per = meta_per * ctx["avance_meta"]
+    out.append(f"ServiceNow, suscripciones del {'mes' if es_mes else 'trimestre'}: ${sn_per:,.0f} de "
+               f"${meta_per:,.0f} ({sn_per / meta_per:.0%}) con {ctx['avance_meta']:.0%} del periodo "
+               f"transcurrido; el ritmo esperado a hoy seria ${esperado_per:,.0f}.")
 
     ytd = ctx["ytd_ganado"]
-    ventas_ytd = suma(por_categoria(ytd, "NEW LOGO")) + suma(por_categoria(ytd, "EXPANSION"))
-    pct = ventas_ytd / TARGET_SALES_ARR
-    ritmo = ctx["meses_transcurridos"] / 12
-    esperado = TARGET_SALES_ARR * ritmo
-    dif = ventas_ytd - esperado
-    out.append(f"KR1 YTD: ${ventas_ytd:,.0f} de ${TARGET_SALES_ARR:,.0f} "
-               f"({pct:.1%}). Al mes {ctx['meses_transcurridos']} el ritmo esperado seria "
-               f"${esperado:,.0f}: hay una brecha de ${abs(dif):,.0f} "
-               f"{'a favor' if dif >= 0 else 'en contra'}.")
-
-    gap = max(TARGET_SALES_ARR - ventas_ytd, 0)
-    if gap:
-        necesario = gap / CONV_RATE
-        pipe = suma(ctx["abiertos"])
-        cobertura = pipe / necesario if necesario else None
-        out.append(f"Para cerrar la brecha hacen falta ${necesario:,.0f} de pipeline al 39% "
-                   f"de conversion. Hoy hay ${pipe:,.0f} abiertos, o sea "
-                   f"{cobertura:.0%} de la cobertura necesaria.")
+    sn_ytd = suma([d for d in ytd if es_suscripcion_servicenow(d)])
+    out.append(f"ServiceNow FY{str(ctx['anio_ref'])[-2:]}: ${sn_ytd:,.0f} de ${TARGET_SERVICENOW_ANIO:,.0f} "
+               f"({sn_ytd / TARGET_SERVICENOW_ANIO:.1%}). Faltan ${max(TARGET_SERVICENOW_ANIO - sn_ytd, 0):,.0f}; "
+               f"hay ${suma([d for d in ctx['abiertos'] if es_suscripcion_servicenow(d)]):,.0f} de ARR en "
+               f"pipeline abierto de suscripciones de ServiceNow.")
 
     perdidos = ctx["mes_perdido"]
     wr = tasa(len(g), len(g) + len(perdidos))
@@ -848,19 +869,13 @@ def construir_insights(ctx):
                        f"deal ({top['nombre'][:52]}, {top['vendedor']}).")
 
     serv_ytd = suma(por_categoria(ytd, "SERVICES"))
-    out.append(f"KR3 Servicios YTD: ${serv_ytd:,.0f} de ${TARGET_SERVICES_ARR:,.0f} "
-               f"({serv_ytd / TARGET_SERVICES_ARR:.0%}), incluyendo renovaciones de servicio.")
+    out.append(f"Servicios ganados en el ano: ${serv_ytd:,.0f} de ARR, incluyendo renovaciones de "
+               f"servicio (sin meta definida).")
 
     pf_ytd = suma(por_categoria(ytd, "PAYMENT FREQUENCY"))
     pf_abierto = suma(por_categoria(ctx["abiertos"], "PAYMENT FREQUENCY"))
-    if pf_ytd == 0:
-        out.append(f"ALERTA KR2: Payment Frequency sigue en $0 ganado de "
-                   f"${TARGET_PF_ARR:,.0f}. Hay ${pf_abierto:,.0f} en deals abiertos de ese "
-                   f"tipo, sobre un ARR convertible de ${CONVERTIBLE_ARR:,.0f} en "
-                   f"{RESELLER_UNIVERSE} orgs (la meta del 40% son ${CONVERTIBLE_TARGET:,.0f}).")
-    else:
-        out.append(f"KR2 Payment Frequency: ${pf_ytd:,.0f} de ${TARGET_PF_ARR:,.0f} "
-                   f"({pf_ytd / TARGET_PF_ARR:.0%}), con ${pf_abierto:,.0f} abiertos por cerrar.")
+    out.append(f"Payment Frequency en el ano: ${pf_ytd:,.0f} ganados y ${pf_abierto:,.0f} abiertos "
+               f"por cerrar (sin meta definida).")
 
     ch_si = [c for c in ctx["churn"] if c["corresponde"] == "Si"]
     if ch_si:
@@ -932,9 +947,9 @@ def main():
         legacy_ytd = en_rango(normalizar(legacy_filas), date(anio_ref, 1, 1), hasta)
         legacy_ytd_ganado = [d for d in legacy_ytd if d["estado"] == "GANADO"]
         log(f"Legacy SR: {len(legacy_ytd_ganado)} deals ganados YTD "
-            f"(${suma(legacy_ytd_ganado):,.0f} ARR) sumados al OKR anual.")
+            f"(${suma(legacy_ytd_ganado):,.0f} ARR) sumados al acumulado anual.")
     else:
-        log("AVISO: falta el reporte Legacy SR; el OKR anual no incluye a "
+        log("AVISO: falta el reporte Legacy SR; el acumulado anual no incluye a "
             "vendedores que ya no estan en el equipo.")
 
     # Churn: se reutiliza el analisis del plan de compensacion.
@@ -961,6 +976,14 @@ def main():
     # Ritmo dentro del periodo: que fraccion del trimestre ya transcurrio.
     dias_periodo = (rango_trimestre(anio, trimestre_de(desde))[1] - desde).days + 1
     dias_corridos = (hasta - desde).days + 1
+    # Avance para la meta de ServiceNow: se mide hasta HOY aunque el periodo
+    # pedido termine despues (un --mes o --trimestre del periodo en curso).
+    fecha_ref = min(hasta, hoy)
+    dias_meta = (hasta - desde).days + 1 if args.mes else dias_periodo
+    dias_corridos_meta = max(min((fecha_ref - desde).days + 1, dias_meta), 0)
+    avance_meta = dias_corridos_meta / dias_meta if dias_meta else 1.0
+    ini_qr, fin_qr = rango_trimestre(anio_ref, trimestre_de(fecha_ref))
+    avance_trimestre_actual = min(((fecha_ref - ini_qr).days + 1) / ((fin_qr - ini_qr).days + 1), 1.0)
     ctx = {
         "reporte": reporte,
         "periodo_label": etiqueta,
@@ -969,6 +992,9 @@ def main():
         "meses_transcurridos": hasta.month if anio_ref == hoy.year else 12,
         "avance_periodo": min(dias_corridos / dias_periodo, 1.0) if dias_periodo else 1.0,
         "dias_corridos": dias_corridos, "dias_periodo": dias_periodo,
+        "es_mes": bool(args.mes), "anio_ref": anio_ref, "fecha_ref": fecha_ref,
+        "avance_meta": avance_meta, "dias_meta": dias_meta, "dias_corridos_meta": dias_corridos_meta,
+        "avance_trimestre_actual": avance_trimestre_actual,
         "todos": todos, "equipo": equipo, "periodo": periodo_deals,
         "mes_ganado": [d for d in periodo_deals if d["estado"] == "GANADO"],
         "mes_perdido": [d for d in periodo_deals if d["estado"] == "PERDIDO"],
