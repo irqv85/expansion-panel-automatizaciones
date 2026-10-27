@@ -877,6 +877,107 @@ def hoja_farming(wb, ctx):
     return ws
 
 
+def hoja_comparativa(wb, ctx):
+    """Equipo en conjunto e individual, y farming contra Sofia. Sofia no tiene
+    deals en vTiger (0 filas con su nombre en Clauco - Deals, 27-10-2026), asi
+    que contra ella solo se compara farming; los deals son del equipo."""
+    ws = wb.create_sheet("Comparativa")
+    celda(ws, 1, 1, f"Comparativa del equipo - {ctx['periodo_label']}", bold=True, size=14,
+          color=C_DARK, borde=False)
+    celda(ws, 2, 1, "Conversion = ganados / (ganados + perdidos), por cantidad y por ARR, deals con fecha de "
+          "cierre en el periodo. Licencias y servicios van separados. Sofia Garcia no tiene deals en vTiger: "
+          "contra ella solo se compara farming.", size=9, color="5B5F6B", borde=False)
+
+    ganados, perdidos = ctx["mes_ganado"], ctx["mes_perdido"]
+    personas = [(v, [v]) for v in EQUIPO] + [("Equipo", list(EQUIPO))]
+    bloques = [("A. Licencias", lambda d: d["categoria"] != "SERVICES"),
+               ("B. Servicios", lambda d: d["categoria"] == "SERVICES"),
+               ("C. Total", lambda d: True)]
+    enc = ["Vendedor", "Ganados", "Perdidos", "Conversion cantidad", "ARR ganado",
+           "ARR perdido", "Conversion monto"]
+    f = 4
+    filas_lic = None
+    for titulo, criterio in bloques:
+        banda(ws, f, titulo, 7, C_SMB)
+        f += 1
+        for i, t in enumerate(enc, start=1):
+            celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True,
+                  align="center" if i > 1 else None)
+        f += 1
+        ini = f
+        for nombre, duenos in personas:
+            g = [d for d in ganados if d["vendedor"] in duenos and criterio(d)]
+            p = [d for d in perdidos if d["vendedor"] in duenos and criterio(d)]
+            total = nombre == "Equipo"
+            fill = "EFF3F8" if total else None
+            celda(ws, f, 1, nombre, bold=total, fill=fill)
+            celda(ws, f, 2, len(g), bold=total, fill=fill, align="center")
+            celda(ws, f, 3, len(p), bold=total, fill=fill, align="center")
+            wq = tasa(len(g), len(g) + len(p))
+            wa = tasa(suma(g), suma(g) + suma(p))
+            c = celda(ws, f, 4, wq if wq is not None else "sin cierres", bold=total, fill=fill, fmt=PCT, align="center")
+            celda(ws, f, 5, suma(g), bold=total, fill=fill, fmt=MONEY)
+            celda(ws, f, 6, suma(p), bold=total, fill=fill, fmt=MONEY)
+            celda(ws, f, 7, wa if wa is not None else "sin cierres", bold=total, fill=fill, fmt=PCT, align="center")
+            f += 1
+        if titulo.startswith("A."):
+            filas_lic = (ini, f - 1)
+        f += 1
+
+    # --- D. Farming: equipo contra Sofia ---
+    farmings = ctx.get("farmings")
+    banda(ws, f, "D. Farming: equipo contra Sofia Garcia", 7, C_SMB)
+    f += 1
+    if farmings is None:
+        celda(ws, f, 1, "Falta el reporte Clauco Org en Descargas; bajalo y vuelve a generar.",
+              size=10, color=C_RED, borde=False)
+        f += 1
+    else:
+        desde, hasta = ctx["desde"], ctx["hasta"]
+        foco = {n for n, _ in FABRICANTES_FOCO}
+        for i, t in enumerate(["Quien", "Creados en el periodo", "Activos hoy", "Cross-Sell activos",
+                               "Cross-Sell de foco activos", "Upsell activos", "Starting Farming activos"], start=1):
+            celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True,
+                  align="center" if i > 1 else None)
+        f += 1
+        grupos = [(v, [v]) for v in EQUIPO] + [("Equipo", list(EQUIPO)), ("Sofia Garcia", [SOFIA])]
+        for nombre, duenos in grupos:
+            lista = [x for x in farmings if x["vendedor"] in duenos]
+            act = [x for x in lista if x["activo"]]
+            cs = [x for x in act if x["tipo"] == "Cross-Sell"]
+            total = nombre == "Equipo"
+            fill = "EFF3F8" if total else ("F5F5F5" if nombre == "Sofia Garcia" else None)
+            celda(ws, f, 1, nombre, bold=total, fill=fill)
+            for j, v in enumerate([sum(1 for x in lista if x["creado"] and desde <= x["creado"] <= hasta),
+                                   len(act), len(cs), sum(1 for x in cs if x["fabricante"] in foco),
+                                   sum(1 for x in act if x["tipo"] == "Upsell"),
+                                   sum(1 for x in act if x["tipo"] == "Starting Farming")], start=2):
+                celda(ws, f, j, v, bold=total, fill=fill, align="center")
+            f += 1
+        celda(ws, f, 1, "\"De foco\": Halo, Humand, Atera, NinjaOne y ServiceNow. Detalle en la hoja Farming.",
+              size=9, color="5B5F6B", borde=False)
+
+    # Grafico: conversion por cantidad de licencias, por persona y equipo.
+    if filas_lic:
+        from openpyxl.chart import BarChart, Reference
+        ch = BarChart()
+        ch.type = "col"
+        ch.title = "Conversion por cantidad, licencias"
+        ch.add_data(Reference(ws, min_col=4, min_row=filas_lic[0] - 1, max_row=filas_lic[1]), titles_from_data=True)
+        ch.set_categories(Reference(ws, min_col=1, min_row=filas_lic[0], max_row=filas_lic[1]))
+        ch.y_axis.number_format = "0%"
+        ch.x_axis.delete = False
+        ch.y_axis.delete = False
+        ch.legend = None
+        ch.height, ch.width = 7.5, 14
+        ws.add_chart(ch, "I4")
+
+    for i, ancho in enumerate([24, 14, 14, 16, 16, 16, 16], start=1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+    ws.sheet_view.showGridLines = False
+    return ws
+
+
 def hoja_okr_anual(wb, ctx):
     """Detalle deal por deal del acumulado del ano (YTD): de donde sale cada
     monto, incluyendo lo aportado por vendedores que ya no estan en el equipo
@@ -1232,6 +1333,7 @@ def main():
     hoja_pipeline(wb, ctx)
     hoja_deals(wb, ctx)
     hoja_farming(wb, ctx)
+    hoja_comparativa(wb, ctx)
     hoja_okr_anual(wb, ctx)
     hoja_calidad(wb, ctx)
 
