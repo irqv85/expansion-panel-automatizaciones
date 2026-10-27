@@ -671,6 +671,183 @@ def hoja_deals(wb, ctx):
     return ws
 
 
+# ---------- farming ----------
+
+# Sofia Garcia lleva el farming de todo GB y va aparte del equipo: sirve de
+# referencia, no suma al equipo (decision de Iran, 27-10-2026).
+SOFIA = "Sofia Garcia"
+FABRICANTES_FOCO = [
+    ("Halo", re.compile(r"\bhalo", re.IGNORECASE)),
+    ("Humand", re.compile(r"humand", re.IGNORECASE)),
+    ("Atera", re.compile(r"\batera\b", re.IGNORECASE)),
+    ("NinjaOne", re.compile(r"ninja", re.IGNORECASE)),
+    ("ServiceNow", PATRON_SERVICENOW),
+]
+FARMING_ACTIVO_NO = {"completed", "farming unattended", "farming unnatended",
+                     "completed unattended", "completed unnatended"}
+TIPOS_FARMING = ["Cross-Sell", "Upsell", "Starting Farming"]
+
+
+def fabricante_farming(producto, nombre):
+    """Fabricante de un farming. Farming Product viene vacio en ~1 de cada 4 y
+    el nombre suele decirlo ("2026 - HaloITSM - Banco X"); si ni asi se sabe,
+    queda "Sin producto" en vez de adivinar."""
+    for texto in (producto, nombre):
+        if not texto:
+            continue
+        for etiqueta, patron in FABRICANTES_FOCO:
+            if patron.search(str(texto)):
+                return etiqueta
+    return "Otros fabricantes" if producto else "Sin producto"
+
+
+def cargar_farmings(reporte):
+    """Un farming por (nombre, organizacion): Clauco Org lo repite por cada
+    asset de la organizacion."""
+    _, filas = leer(reporte)
+    vistos, out = set(), []
+    for r in filas:
+        nombre = r.get("Farming Farming Name")
+        org = r.get("Organizations Organization Name") or ""
+        if not nombre or (nombre, org) in vistos:
+            continue
+        vistos.add((nombre, org))
+        etapa = str(r.get("Farming Farming Stage") or "").strip()
+        producto = str(r.get("Farming Product") or "").strip()
+        out.append({
+            "farming": nombre, "org": org,
+            "vendedor": r.get("Farming Assigned To") or "",
+            "tipo": str(r.get("Farming Farming Type") or "").strip() or "Sin tipo",
+            "etapa": etapa or "Sin etapa",
+            "activo": etapa.lower().rstrip(".").strip() not in FARMING_ACTIVO_NO,
+            "producto": producto, "fabricante": fabricante_farming(producto, nombre),
+            "empleados": str(r.get("Organizations Employee Count") or "").strip(),
+            "pais": r.get("Organizations Billing Country") or "",
+            "creado": a_fecha(r.get("Farming Created Time")),
+            "modificado": a_fecha(r.get("Farming Modified Time")),
+        })
+    return out
+
+
+def hoja_farming(wb, ctx):
+    ws = wb.create_sheet("Farming")
+    celda(ws, 1, 1, "Farming del equipo", bold=True, size=14, color=C_DARK, borde=False)
+    farmings = ctx.get("farmings")
+    if farmings is None:
+        celda(ws, 2, 1, "Falta el reporte Clauco Org en Descargas (se baja en la corrida de la "
+              "manana de Clauco). Bajalo y vuelve a generar.", size=10, color=C_RED, borde=False)
+        ws.sheet_view.showGridLines = False
+        return ws
+    desde, hasta = ctx["desde"], ctx["hasta"]
+    celda(ws, 2, 1, f"Fuente: {ctx['farmings_fuente']}. \"Creados\" es del periodo {ctx['periodo_label']}; "
+          "\"Activos\" es la foto de hoy (todo farming que no esta Completed). Sofia Garcia va aparte, "
+          "como referencia.", size=9, color="5B5F6B", borde=False)
+
+    def activos(lista):
+        return [x for x in lista if x["activo"]]
+
+    def creados(lista):
+        return [x for x in lista if x["creado"] and desde <= x["creado"] <= hasta]
+
+    def de(vendedor):
+        return [x for x in farmings if x["vendedor"] == vendedor]
+
+    equipo = [x for x in farmings if x["vendedor"] in EQUIPO]
+    sofia = de(SOFIA)
+
+    # --- A. Por vendedor ---
+    banda(ws, 4, "A. Por vendedor", 7, C_SMB)
+    enc = ["Vendedor", "Creados en el periodo", "Activos hoy"] + TIPOS_FARMING + ["Otros tipos"]
+    for i, t in enumerate(enc, start=1):
+        celda(ws, 5, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True, align="center" if i > 1 else None)
+    f = 6
+    filas_a = [(v, de(v)) for v in EQUIPO] + [("Equipo", equipo), ("Sofia Garcia (aparte)", sofia)]
+    for nombre, lista in filas_a:
+        total = nombre == "Equipo"
+        fill = "EFF3F8" if total else ("F5F5F5" if nombre.startswith("Sofia") else None)
+        act = activos(lista)
+        celda(ws, f, 1, nombre, bold=total, fill=fill)
+        celda(ws, f, 2, len(creados(lista)), bold=total, fill=fill, align="center")
+        celda(ws, f, 3, len(act), bold=total, fill=fill, align="center")
+        for j, tipo in enumerate(TIPOS_FARMING, start=4):
+            celda(ws, f, j, sum(1 for x in act if x["tipo"] == tipo), bold=total, fill=fill, align="center")
+        celda(ws, f, 7, sum(1 for x in act if x["tipo"] not in TIPOS_FARMING), bold=total, fill=fill, align="center")
+        f += 1
+    fin_a = f - 1
+    n_vend = len(EQUIPO)
+
+    # --- B. Por fabricante ---
+    f += 1
+    banda(ws, f, "B. Por fabricante (cross-sell es lo que se quiere vender)", 7, C_SMB)
+    f += 1
+    for i, t in enumerate(["Fabricante", "Equipo: activos", "Equipo: cross-sell activos",
+                           "Equipo: creados en el periodo", "Sofia: activos",
+                           "Sofia: cross-sell activos", "Sofia: creados en el periodo"], start=1):
+        celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True, align="center" if i > 1 else None)
+    f += 1
+    fabricantes = [n for n, _ in FABRICANTES_FOCO] + ["Otros fabricantes", "Sin producto"]
+    for fab in fabricantes:
+        e = [x for x in equipo if x["fabricante"] == fab]
+        s = [x for x in sofia if x["fabricante"] == fab]
+        fill = "F5F5F5" if fab in ("Otros fabricantes", "Sin producto") else None
+        celda(ws, f, 1, fab, fill=fill)
+        for j, v in enumerate([len(activos(e)),
+                               sum(1 for x in activos(e) if x["tipo"] == "Cross-Sell"),
+                               len(creados(e)), len(activos(s)),
+                               sum(1 for x in activos(s) if x["tipo"] == "Cross-Sell"),
+                               len(creados(s))], start=2):
+            celda(ws, f, j, v, fill=fill, align="center")
+        f += 1
+    celda(ws, f, 1, "Atera aun no tiene farmings. \"Sin producto\": el reporte no trae producto ni el nombre lo dice; "
+          "no se adivina.", size=9, color="5B5F6B", borde=False)
+
+    # --- Grafico: activos por tipo y vendedor ---
+    from openpyxl.chart import BarChart, Reference
+    ch = BarChart()
+    ch.type, ch.grouping, ch.overlap = "bar", "stacked", 100
+    ch.title = "Farmings activos por vendedor y tipo"
+    ch.add_data(Reference(ws, min_col=4, max_col=7, min_row=5, max_row=5 + n_vend), titles_from_data=True)
+    ch.set_categories(Reference(ws, min_col=1, min_row=6, max_row=5 + n_vend))
+    ch.x_axis.delete = False
+    ch.y_axis.delete = False
+    ch.x_axis.scaling.orientation = "maxMin"
+    ch.y_axis.crosses = "max"
+    ch.legend.position = "r"
+    ch.height, ch.width = 7.5, 15
+    ws.add_chart(ch, "I4")
+
+    # --- C. Detalle de lo activo del equipo ---
+    f += 2
+    banda(ws, f, "C. Farmings activos del equipo (cross-sell primero, los mas antiguos arriba)", 10, C_SMB)
+    f += 1
+    cols = ["Farming", "Organizacion", "Vendedor", "Tipo", "Etapa", "Fabricante", "Empleados",
+            "Pais", "Creado", "Dias abiertos"]
+    for i, t in enumerate(cols, start=1):
+        celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True)
+    f += 1
+    ini = f
+    orden = {t: i for i, t in enumerate(TIPOS_FARMING)}
+    hoy = date.today()
+    # Se ordena por antiguedad y no por "Modified Time": en vTiger ese campo se
+    # movio para los 44 farmings activos el mismo dia (27-10-2026), asi que no
+    # mide actividad real del vendedor.
+    for x in sorted(activos(equipo), key=lambda x: (orden.get(x["tipo"], 9), x["creado"] or date.max)):
+        dias = (hoy - x["creado"]).days if x["creado"] else None
+        fill = None
+        for i, v in enumerate([x["farming"], x["org"], x["vendedor"], x["tipo"], x["etapa"],
+                               x["fabricante"], x["empleados"], x["pais"],
+                               f"{x['creado']:%d/%m/%Y}" if x["creado"] else "", dias], start=1):
+            celda(ws, f, i, v, fill=fill, wrap=(i in (1, 2)), align="center" if i == 10 else None)
+        f += 1
+    if f == ini:
+        celda(ws, f, 1, "El equipo no tiene farmings activos.")
+
+    for i, ancho in enumerate([46, 30, 20, 18, 20, 16, 12, 14, 12, 12], start=1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+    ws.sheet_view.showGridLines = False
+    return ws
+
+
 def hoja_okr_anual(wb, ctx):
     """Detalle deal por deal del acumulado del ano (YTD): de donde sale cada
     monto, incluyendo lo aportado por vendedores que ya no estan en el equipo
@@ -984,6 +1161,14 @@ def main():
     avance_meta = dias_corridos_meta / dias_meta if dias_meta else 1.0
     ini_qr, fin_qr = rango_trimestre(anio_ref, trimestre_de(fecha_ref))
     avance_trimestre_actual = min(((fecha_ref - ini_qr).days + 1) / ((fin_qr - ini_qr).days + 1), 1.0)
+    # Farming: Clauco Org (todo GB, con fecha de creacion). Opcional: sin el
+    # reporte la hoja avisa que falta en vez de romper el resto.
+    r_far = find_reporte("Clauco Org*.xlsx", "Clauco Org", obligatorio=False)
+    farmings = cargar_farmings(r_far) if r_far else None
+    farmings_fuente = f"{r_far.stem.split('_')[0]} del {datetime.fromtimestamp(r_far.stat().st_mtime):%d/%m}" if r_far else ""
+    if r_far:
+        log(f"Farming: {len(farmings)} farmings de {r_far.name}")
+
     ctx = {
         "reporte": reporte,
         "periodo_label": etiqueta,
@@ -1003,6 +1188,7 @@ def main():
                       + _con_fuente(legacy_ytd_ganado, "Legacy"),
         "abiertos": [d for d in equipo if d["estado"] == "ABIERTO"],
         "churn": churn,
+        "farmings": farmings, "farmings_fuente": farmings_fuente,
     }
     ctx["insights"] = construir_insights(ctx)
 
@@ -1016,6 +1202,7 @@ def main():
     hoja_vendedores(wb, ctx)
     hoja_pipeline(wb, ctx)
     hoja_deals(wb, ctx)
+    hoja_farming(wb, ctx)
     hoja_okr_anual(wb, ctx)
     hoja_calidad(wb, ctx)
 
