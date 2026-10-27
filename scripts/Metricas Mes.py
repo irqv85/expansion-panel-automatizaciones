@@ -698,7 +698,11 @@ def fabricante_farming(producto, nombre):
         for etiqueta, patron in FABRICANTES_FOCO:
             if patron.search(str(texto)):
                 return etiqueta
-    return "Otros fabricantes" if producto else "Sin producto"
+    # Los servicios son servicios y ya (Iran, 27-10-2026): no se mezclan con
+    # licencias ni cuentan como "otro fabricante".
+    if re.search(r"services|ssi|sip|booster", f"{producto} {nombre}", re.IGNORECASE):
+        return "Servicios"
+    return "Fuera de foco" if producto else "Sin producto"
 
 
 def cargar_farmings(reporte):
@@ -785,11 +789,11 @@ def hoja_farming(wb, ctx):
                            "Sofia: cross-sell activos", "Sofia: creados en el periodo"], start=1):
         celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True, align="center" if i > 1 else None)
     f += 1
-    fabricantes = [n for n, _ in FABRICANTES_FOCO] + ["Otros fabricantes", "Sin producto"]
+    fabricantes = [n for n, _ in FABRICANTES_FOCO] + ["Servicios", "Fuera de foco", "Sin producto"]
     for fab in fabricantes:
         e = [x for x in equipo if x["fabricante"] == fab]
         s = [x for x in sofia if x["fabricante"] == fab]
-        fill = "F5F5F5" if fab in ("Otros fabricantes", "Sin producto") else None
+        fill = "F5F5F5" if fab in ("Servicios", "Fuera de foco", "Sin producto") else None
         celda(ws, f, 1, fab, fill=fill)
         for j, v in enumerate([len(activos(e)),
                                sum(1 for x in activos(e) if x["tipo"] == "Cross-Sell"),
@@ -798,8 +802,33 @@ def hoja_farming(wb, ctx):
                                len(creados(s))], start=2):
             celda(ws, f, j, v, fill=fill, align="center")
         f += 1
-    celda(ws, f, 1, "Atera aun no tiene farmings. \"Sin producto\": el reporte no trae producto ni el nombre lo dice; "
-          "no se adivina.", size=9, color="5B5F6B", borde=False)
+    celda(ws, f, 1, "Atera aun no tiene farmings. Si el farming tiene Halo cuenta como Halo aunque tenga Freshworks. "
+          "\"Fuera de foco\": Freshworks, monday, Intercom, Vtiger y similares. \"Sin producto\": no se adivina.", size=9, color="5B5F6B", borde=False)
+
+    # --- D. Por tamano de empresa ---
+    f += 2
+    banda(ws, f, "D. Por tamano de la empresa (empleados de la organizacion)", 7, C_SMB)
+    f += 1
+    for i, t in enumerate(["Empleados", "Equipo: activos", "Equipo: cross-sell activos",
+                           "Equipo: de foco activos", "Sofia: activos",
+                           "Sofia: cross-sell activos", "Sofia: de foco activos"], start=1):
+        celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True, align="center" if i > 1 else None)
+    f += 1
+    rangos = ["1-10", "11-50", "51-250", "251-500", "501-1000", "1001+", "5000+"]
+    foco = {n for n, _ in FABRICANTES_FOCO}
+    for rango in rangos + ["Sin dato"]:
+        e = [x for x in activos(equipo) if (x["empleados"] or "Sin dato") == rango]
+        s_ = [x for x in activos(sofia) if (x["empleados"] or "Sin dato") == rango]
+        fill = "F5F5F5" if rango == "Sin dato" else None
+        celda(ws, f, 1, rango, fill=fill)
+        for j, v in enumerate([len(e), sum(1 for x in e if x["tipo"] == "Cross-Sell"),
+                               sum(1 for x in e if x["fabricante"] in foco),
+                               len(s_), sum(1 for x in s_ if x["tipo"] == "Cross-Sell"),
+                               sum(1 for x in s_ if x["fabricante"] in foco)], start=2):
+            celda(ws, f, j, v, fill=fill, align="center")
+        f += 1
+    celda(ws, f, 1, "\"De foco\": Halo, Humand, Atera, NinjaOne y ServiceNow. Los rangos salen del campo "
+          "Employee Count de la organizacion.", size=9, color="5B5F6B", borde=False)
 
     # --- Grafico: activos por tipo y vendedor ---
     from openpyxl.chart import BarChart, Reference
@@ -818,9 +847,9 @@ def hoja_farming(wb, ctx):
 
     # --- C. Detalle de lo activo del equipo ---
     f += 2
-    banda(ws, f, "C. Farmings activos del equipo (cross-sell primero, los mas antiguos arriba)", 10, C_SMB)
+    banda(ws, f, "C. Farmings activos del equipo (cross-sell primero, los mas antiguos arriba)", 11, C_SMB)
     f += 1
-    cols = ["Farming", "Organizacion", "Vendedor", "Tipo", "Etapa", "Fabricante", "Empleados",
+    cols = ["Farming", "Organizacion", "Vendedor", "Tipo", "Etapa", "Fabricante", "Producto", "Empleados",
             "Pais", "Creado", "Dias abiertos"]
     for i, t in enumerate(cols, start=1):
         celda(ws, f, i, t, bold=True, size=9, color="FFFFFF", fill=C_MID, wrap=True)
@@ -835,14 +864,14 @@ def hoja_farming(wb, ctx):
         dias = (hoy - x["creado"]).days if x["creado"] else None
         fill = None
         for i, v in enumerate([x["farming"], x["org"], x["vendedor"], x["tipo"], x["etapa"],
-                               x["fabricante"], x["empleados"], x["pais"],
+                               x["fabricante"], x["producto"], x["empleados"], x["pais"],
                                f"{x['creado']:%d/%m/%Y}" if x["creado"] else "", dias], start=1):
-            celda(ws, f, i, v, fill=fill, wrap=(i in (1, 2)), align="center" if i == 10 else None)
+            celda(ws, f, i, v, fill=fill, wrap=(i in (1, 2)), align="center" if i == 11 else None)
         f += 1
     if f == ini:
         celda(ws, f, 1, "El equipo no tiene farmings activos.")
 
-    for i, ancho in enumerate([46, 30, 20, 18, 20, 16, 12, 14, 12, 12], start=1):
+    for i, ancho in enumerate([46, 30, 20, 18, 20, 16, 20, 12, 14, 12, 12], start=1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
     ws.sheet_view.showGridLines = False
     return ws
