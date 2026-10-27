@@ -1021,7 +1021,7 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     # Nombre estable por periodo: cada clic sobrescribe el mismo archivo.
-    salida = OUTPUT_DIR / f"Metricas Mid-SMB {sufijo}.xlsx"
+    salida = OUTPUT_DIR / f"Iran team metrics {sufijo}.xlsx"
     try:
         wb.save(salida)
     except PermissionError:

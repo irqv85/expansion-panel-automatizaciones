@@ -582,7 +582,7 @@ def check_metricas_status():
     genero hoy, amarillo si es de otro dia, gris si no existe."""
     hoy = datetime.now()
     q = (hoy.month - 1) // 3 + 1
-    archivo = METRICAS_DIR / f"Metricas Mid-SMB {hoy.year}Q{q}.xlsx"
+    archivo = METRICAS_DIR / f"Iran team metrics {hoy.year}Q{q}.xlsx"
 
     if not archivo.exists():
         return COLOR_GRAY, f"Sin generar para {hoy.year}Q{q}. Dale a 'Generar reporte del Q'."
